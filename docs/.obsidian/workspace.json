@@ -1,0 +1,209 @@
+{
+  "main": {
+    "id": "19d009b53c46f3da",
+    "type": "split",
+    "children": [
+      {
+        "id": "1bb3d9df0e7e9e3e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c2ff12426c915557",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "任务设定.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "任务设定"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "4953e450ebf962e5",
+    "type": "split",
+    "children": [
+      {
+        "id": "f02cfba7b9d5f036",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ad7315a30c036f95",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "4184cfa7c7189519",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "662f6ac442cb2847",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "3fab68bc37902026",
+    "type": "split",
+    "children": [
+      {
+        "id": "c27b3abe76487dee",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "48373ba244fced55",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "任务设定.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "c1664a4c226f8908",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "任务设定.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "018d02e412dfbc93",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "bf102d0779749108",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "222132a70e0f3f3a",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "任务设定.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "c2ff12426c915557",
+  "lastOpenFiles": [
+    "图鉴-灵兽.md",
+    "README.md",
+    "宗门设定.md",
+    "玩法系统.md",
+    "图鉴-妖兽.md",
+    "图鉴-矿石.md",
+    "境界与修炼.md",
+    "功法设定.md",
+    "法术设定.md",
+    "丹药设定.md",
+    "法宝设定.md",
+    "设定总览.md",
+    "图鉴-灵宠.md",
+    "图鉴-药材.md",
+    "秘境设定.md"
+  ]
+}

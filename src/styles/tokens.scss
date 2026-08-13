@@ -1,0 +1,44 @@
+:root,
+page {
+  --bg: #0e1424;
+  --panel: #182136;
+  --panel-2: #1f2b45;
+  --border: #2e3b59;
+  --border-soft: rgba(46, 59, 89, 0.6);
+  --gold: #d9b36c;
+  --gold-strong: #c89a4b;
+  --gold-soft: rgba(217, 179, 108, 0.35);
+  --jade: #5bc8a8;
+  --mp: #6fa8dc;
+  --hp: #e07b6c;
+  --text-primary: #f1eee6;
+  --text-secondary: #a6b0c8;
+  --text-muted: #6e7a93;
+  --tab-bg: rgba(224, 24, 33, 0.2);
+  --tab-active: #8b1a22;
+  --ink: #1a1206;
+  --ink-soft: #5a4314;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --page-pad: 16px;
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --shadow-panel: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --shadow-tab: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-gold: 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+page {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+
+view,
+text,
+button,
+input,
+textarea {
+  box-sizing: border-box;
+}

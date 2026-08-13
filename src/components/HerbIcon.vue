@@ -1,0 +1,66 @@
+<template>
+  <view
+    class="herb-icon"
+    :class="[`herb-icon--${size}`, { 'herb-icon--empty': !src }]"
+    :style="src ? { backgroundImage: `url('${src}')` } : undefined"
+  >
+    <text v-if="!src" class="herb-icon__fallback">药</text>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { getHerbIconUrl } from '../constants/herb-icon-src'
+
+const props = withDefaults(
+  defineProps<{
+    name: string
+    level?: string
+    size?: 'sm' | 'md' | 'lg'
+  }>(),
+  { size: 'md' }
+)
+
+const src = computed(() => getHerbIconUrl(props.name, props.level))
+</script>
+
+<style lang="scss">
+.herb-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background-color: #0e1424;
+  background-repeat: no-repeat;
+  background-position: center center;
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.herb-icon--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-size: 28px 28px;
+}
+
+.herb-icon--md {
+  width: 40px;
+  height: 40px;
+  background-size: 40px 40px;
+}
+
+.herb-icon--lg {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background-size: 56px 56px;
+}
+
+.herb-icon__fallback {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+</style>
