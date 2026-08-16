@@ -1,0 +1,67 @@
+/** 功法图标：由 scripts/slice-technique-icons.mjs 自图鉴切片生成 */
+
+export const TECHNIQUE_ICON_FILES: Record<string, string> = {
+  '纳气诀': 'tech-001.png',
+  '青木诀': 'tech-002.png',
+  '烈火诀': 'tech-003.png',
+  '凝水诀': 'tech-004.png',
+  '玄铁炼体诀': 'tech-005.png',
+  '疾风决': 'tech-006.png',
+  '青云心法': 'tech-007.png',
+  '金刚诀': 'tech-008.png',
+  '赤炎真诀': 'tech-009.png',
+  '寒月诀': 'tech-010.png',
+  '紫雷诀': 'tech-011.png',
+  '影遁术': 'tech-012.png',
+  '太玄功': 'tech-013.png',
+  '厚土神诀': 'tech-014.png',
+  '青冥剑诀': 'tech-015.png',
+  '九转炼体诀': 'tech-016.png',
+  '九霄雷法': 'tech-017.png',
+  '万兽灵诀': 'tech-018.png',
+  '太虚剑诀': 'tech-019.png',
+  '九幽魂诀': 'tech-020.png',
+  '青帝长生诀': 'tech-021.png',
+  '玄冰神诀': 'tech-022.png',
+  '九天雷皇诀': 'tech-023.png',
+  '天妖炼体诀': 'tech-024.png',
+  '太阴炼魂诀': 'tech-025.png',
+  '星辰炼体术': 'tech-026.png',
+  '虚空经': 'tech-027.png',
+  '岁月诀': 'tech-028.png',
+  '六道轮回经': 'tech-029.png',
+  '混沌炼气诀': 'tech-030.png',
+  '阴阳造化诀': 'tech-031.png',
+  '万界归元诀': 'tech-032.png',
+  '世界树经': 'tech-033.png',
+  '鸿蒙紫气诀': 'tech-034.png',
+  '太初神诀': 'tech-035.png',
+  '诸天帝经': 'tech-036.png',
+  '九转仙经': 'tech-037.png',
+  '混沌仙经': 'tech-038.png',
+  '鸿蒙神典': 'tech-039.png',
+  '万道神诀': 'tech-040.png',
+  '太初道经': 'tech-041.png',
+  '无上天道经': 'tech-042.png',
+}
+
+export const TECHNIQUE_ICON_ALIASES: Record<string, string> = {
+  '纳气决': '纳气诀',
+  '青木决': '青木诀',
+  '烈火决': '烈火诀',
+  '凝水决': '凝水诀',
+  '玄铁炼体决': '玄铁炼体诀',
+  '金刚决': '金刚诀',
+  '九转炼体决': '九转炼体诀',
+  '万兽灵决': '万兽灵诀',
+  '太阴炼魂决': '太阴炼魂诀',
+  '星辰锻体术': '星辰炼体术',
+  '星辰转体术': '星辰炼体术',
+}
+
+export function resolveTechniqueIconName(name: string): string | null {
+  if (TECHNIQUE_ICON_FILES[name]) return name
+  const alias = TECHNIQUE_ICON_ALIASES[name]
+  if (alias && TECHNIQUE_ICON_FILES[alias]) return alias
+  return null
+}

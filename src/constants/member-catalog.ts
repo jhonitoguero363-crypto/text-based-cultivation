@@ -1,4 +1,8 @@
 import type { SectId } from './sects'
+import { QINGYUN_EXTRA_MEMBERS } from './member-catalog-qingyun-extra'
+import { TIANMO_MEMBERS } from './member-catalog-tianmo'
+import { WANJIAN_MEMBERS } from './member-catalog-wanjian'
+import { YAOZU_MEMBERS } from './member-catalog-yaozu'
 
 /** 宗门身份层级（由高到低） */
 export type MemberGroup =
@@ -10,6 +14,9 @@ export type MemberGroup =
   | '外门弟子'
   | '杂役弟子'
 
+/** 宗门设施归属（可未划分） */
+export type MemberDivision = '丹阁' | '器阁' | '灵兽阁' | '药园' | '矿洞' | '未划分'
+
 export interface CatalogMember {
   id: string
   name: string
@@ -19,6 +26,8 @@ export interface CatalogMember {
   avatar: string
   tone: string
   group: MemberGroup
+  /** 丹阁 / 器阁 / 灵兽阁 / 药园 / 矿洞 / 未划分 */
+  division: MemberDivision
   personality: string
   specialty: string
   /** 隐藏设定或补充说明 */
@@ -27,6 +36,8 @@ export interface CatalogMember {
   attitude: string
   sectId: SectId
 }
+
+type CatalogMemberDraft = Omit<CatalogMember, 'division'>
 
 export const MEMBER_GROUP_ORDER: MemberGroup[] = [
   '宗主',
@@ -39,6 +50,41 @@ export const MEMBER_GROUP_ORDER: MemberGroup[] = [
 ]
 
 export const MEMBER_GROUPS: Array<MemberGroup | '全部'> = ['全部', ...MEMBER_GROUP_ORDER]
+
+export const MEMBER_DIVISION_ORDER: MemberDivision[] = [
+  '丹阁',
+  '器阁',
+  '灵兽阁',
+  '药园',
+  '矿洞',
+  '未划分'
+]
+
+export const MEMBER_DIVISIONS: Array<MemberDivision | '全部'> = ['全部', ...MEMBER_DIVISION_ORDER]
+
+/** 按头衔、专长、备注推断设施归属 */
+export function inferMemberDivision(
+  member: Pick<CatalogMemberDraft, 'title' | 'specialty' | 'note'>
+): MemberDivision {
+  const text = `${member.title}${member.specialty}${member.note || ''}`
+  if (/丹阁|丹房|炼丹|丹方|丹渣|晒药|清扫丹渣|魔丹|妖丹|剑丹/.test(text)) return '丹阁'
+  if (/器阁|器房|炼器|锤锻|器屑|矿料|收拾器屑|骨兵|铸剑|骨甲/.test(text)) return '器阁'
+  if (/灵兽|兽栏|饲灵禽|喂养灵|草料|灵禽|灵鸡|清理兽栏|魔兽|饲魔禽|剑灵/.test(text)) {
+    return '灵兽阁'
+  }
+  if (/矿洞|挖矿|采矿|矿石运|运料/.test(text)) return '矿洞'
+  if (/药园|灵田|灵泉|菜畦|菜园|晒谷|督耕|灌溉|灵药|药材|药泉|施肥|粪肥|医术|医理|毒田|魔药|医剑|药谷/.test(text)) {
+    return '药园'
+  }
+  return '未划分'
+}
+
+function withDivision(members: CatalogMemberDraft[]): CatalogMember[] {
+  return members.map((item) => ({
+    ...item,
+    division: inferMemberDivision(item)
+  }))
+}
 
 /** 由职位/身份文案推断分组 */
 export function memberGroupFromTitle(title: string): MemberGroup {
@@ -53,8 +99,8 @@ export function memberGroupFromTitle(title: string): MemberGroup {
   return '外门弟子'
 }
 
-/** 各宗门人物名录（当前已录入青云宗） */
-export const SECT_MEMBER_CATALOG: CatalogMember[] = [
+/** 各宗门人物名录（青云 / 天魔 / 万剑 / 妖族结构对齐） */
+const SECT_MEMBER_CATALOG_DRAFT: CatalogMemberDraft[] = [
   {
     id: 'qy-1',
     name: '沈天玄',
@@ -339,12 +385,22 @@ export const SECT_MEMBER_CATALOG: CatalogMember[] = [
     note: '常在膳堂附近转悠',
     attitude: '中立',
     sectId: 'qingyun'
-  }
+  },
+  ...QINGYUN_EXTRA_MEMBERS as CatalogMemberDraft[],
+  ...(TIANMO_MEMBERS as CatalogMemberDraft[]),
+  ...(WANJIAN_MEMBERS as CatalogMemberDraft[]),
+  ...(YAOZU_MEMBERS as CatalogMemberDraft[])
 ]
+
+export const SECT_MEMBER_CATALOG: CatalogMember[] = withDivision(SECT_MEMBER_CATALOG_DRAFT)
 
 export function getSectMembers(sectId: SectId | string | null | undefined) {
   if (!sectId) return []
   return SECT_MEMBER_CATALOG.filter((item) => item.sectId === sectId)
+}
+
+export function getMembersByDivision(sectId: SectId | string | null | undefined, division: MemberDivision) {
+  return getSectMembers(sectId).filter((item) => item.division === division)
 }
 
 export function getMemberById(id: string) {

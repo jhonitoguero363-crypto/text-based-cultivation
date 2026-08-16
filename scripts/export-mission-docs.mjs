@@ -2,20 +2,29 @@ import fs from 'fs'
 
 const src = fs.readFileSync('src/constants/mission-catalog.ts', 'utf8')
 
+function getStr(block, key) {
+  const re = new RegExp(`${key}:\\s*'([^']*)'`)
+  return block.match(re)?.[1]
+}
+
 const missions = []
-const blocks = src.split(/\{\s*"id":/)
+const blocks = src.split(/\{\s*\n\s*id:/)
 for (let i = 1; i < blocks.length; i++) {
-  const block = '"id":' + blocks[i]
-  const id = block.match(/"id":\s*"([^"]+)"/)?.[1]
-  const name = block.match(/"name":\s*"([^"]+)"/)?.[1]
-  const tag = block.match(/"tag":\s*"([^"]+)"/)?.[1]
-  const desc = block.match(/"desc":\s*"([^"]+)"/)?.[1]
-  const reward = block.match(/"reward":\s*"([^"]+)"/)?.[1]
-  const action = block.match(/"action":\s*"([^"]+)"/)?.[1]
-  const playStyle = block.match(/"playStyle":\s*"([^"]*)"/)?.[1] || ''
-  if (id && name && tag) {
-    missions.push({ id, name, tag, desc, reward, action, playStyle })
-  }
+  const block = 'id:' + blocks[i]
+  const id = getStr(block, 'id')
+  const name = getStr(block, 'name')
+  const tag = getStr(block, 'tag')
+  if (!id || !name || !tag) continue
+  missions.push({
+    id,
+    name,
+    tag,
+    desc: getStr(block, 'desc') || '',
+    reward: getStr(block, 'reward') || '',
+    action: getStr(block, 'action') || '',
+    playStyle: getStr(block, 'playStyle') || '',
+    drops: getStr(block, 'drops') || ''
+  })
 }
 
 const TAG_ORDER = ['每日', '悬赏', '周常', '随机', '奇遇']
@@ -39,7 +48,7 @@ md += `| 流程 | 任务堂接取 → 角色页完成 / 取消 |\n`
 md += `| 完成后续 | 槽位用新任务补齐；无每日完成次数硬上限 |\n`
 md += `| 奖励结算 | 贡献 / 灵石 / 修为 / 声望等，见各条 \`reward\` |\n`
 md += `| 奇遇 | 标签「奇遇」**不进任务堂**；历练探索时以 **28%** 概率触发 |\n`
-md += `| 奇遇了结 | 探索页探查/了结，额外获得修为与灵石 |\n\n`
+md += `| 奇遇了结 | 探索页探查/了结，额外获得修为与灵石；材料见 [历练奇遇掉落](./历练奇遇掉落.md) |\n\n`
 
 md += `## 类型说明\n\n`
 for (const tag of TAG_ORDER) {
@@ -53,10 +62,12 @@ for (const tag of TAG_ORDER) {
   if (!list.length) continue
   md += `## ${tag}（${list.length}）\n\n`
   if (tag === '奇遇') {
-    md += `| 名称 | 描述 | 奖励 / 玩法 | 玩法说明 |\n`
-    md += `|------|------|-------------|----------|\n`
+    md += `| 名称 | 描述 | 奖励 / 玩法 | 玩法说明 | 材料掉落 |\n`
+    md += `|------|------|-------------|----------|----------|\n`
     for (const item of list) {
-      md += `| ${item.name} | ${item.desc} | ${item.reward} | ${item.playStyle || '—'} |\n`
+      const drops = item.drops?.trim()
+      const dropText = drops && drops !== '待补充' ? drops : '待补充'
+      md += `| ${item.name} | ${item.desc} | ${item.reward} | ${item.playStyle || '—'} | ${dropText} |\n`
     }
   } else {
     md += `| 名称 | 描述 | 奖励 | 操作 |\n`
@@ -74,6 +85,7 @@ md += `- \`SECT_MISSION_CATALOG\`：任务堂池（排除奇遇）\n`
 md += `- \`ADVENTURE_ENCOUNTER_CATALOG\`：历练奇遇池\n`
 md += `- \`DAILY_MISSION_COUNT = 5\`\n`
 md += `- \`ADVENTURE_ENCOUNTER_CHANCE = 0.28\`\n`
+md += `- 奇遇材料掉落文档：[历练奇遇掉落](./历练奇遇掉落.md)\n`
 
 fs.writeFileSync('docs/任务设定.md', md, 'utf8')
 console.log(

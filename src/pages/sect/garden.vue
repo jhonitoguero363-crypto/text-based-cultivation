@@ -2,6 +2,21 @@
   <view class="page page--sub">
     <PageHeader title="药园" subtitle="宗门 · 灵石兑换药材" show-back />
     <view class="content">
+      <view v-if="showIrrigate" class="panel">
+        <view class="section-title">
+          <text class="section-title__main">灵田灌溉</text>
+          <text class="section-title__sub">{{ irrigateProgressText }}</text>
+        </view>
+        <text class="irrigate-hint">完成「灌溉灵田」任务进度；每 5 秒可灌一次。</text>
+        <view
+          class="btn btn--block"
+          :class="canIrrigate ? 'btn--jade' : 'btn--ghost'"
+          @tap="irrigate"
+        >
+          {{ canIrrigate ? '灌溉灵田' : `冷却 ${irrigateCd}s` }}
+        </view>
+      </view>
+
       <view class="panel">
         <view class="section-title">
           <text class="section-title__main">药材兑换</text>
@@ -48,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import HerbIcon from '../../components/HerbIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
@@ -58,15 +73,26 @@ import {
   type HerbMaterial
 } from '../../constants/herb-catalog'
 import { usePlayerStore } from '../../stores/player'
+import { useSectStore } from '../../stores/sect'
 
 const player = usePlayerStore()
+const sect = useSectStore()
 const activeTab = ref<(typeof HERB_LEVEL_TABS)[number]>('全部')
 const levelTabs = HERB_LEVEL_TABS
+const irrigateCd = ref(0)
+let irrigateTimer: ReturnType<typeof setInterval> | null = null
+const canIrrigate = computed(() => irrigateCd.value <= 0)
+const showIrrigate = computed(() => sect.activeMission?.objective?.kind === 'irrigate')
+const irrigateProgressText = computed(() => {
+  const m = sect.activeMission
+  if (!m?.objective || m.objective.kind !== 'irrigate') return '每 5 秒可灌一次'
+  return `${m.progress || 0}/${m.objective.target}`
+})
 
 const herbList = computed(() => filterHerbsByTab(activeTab.value))
 
 function ownedCount(name: string) {
-  return player.getBagCount(name, '材料')
+  return player.getBagCount(name, '药材')
 }
 
 function toast(title: string) {
@@ -75,15 +101,42 @@ function toast(title: string) {
 
 function exchange(item: HerbMaterial) {
   if (!player.spendStones(item.exchangeCost)) return toast('灵石不足')
-  player.addBagItem(item.name, '材料')
+  player.addBagItem(item.name, '药材')
   player.persist()
   toast(`已兑换${item.name}`)
 }
+
+function irrigate() {
+  if (!showIrrigate.value) return
+  if (!canIrrigate.value) return toast(`冷却中 ${irrigateCd.value}s`)
+  sect.reportMissionProgress('irrigate', 1)
+  irrigateCd.value = 5
+  if (irrigateTimer) clearInterval(irrigateTimer)
+  irrigateTimer = setInterval(() => {
+    irrigateCd.value = Math.max(0, irrigateCd.value - 1)
+    if (irrigateCd.value <= 0 && irrigateTimer) {
+      clearInterval(irrigateTimer)
+      irrigateTimer = null
+    }
+  }, 1000)
+  toast('已灌溉灵田')
+}
+
+onBeforeUnmount(() => {
+  if (irrigateTimer) clearInterval(irrigateTimer)
+})
 </script>
 
 <style lang="scss">
 .content { padding: 0 16px 20px; }
 .inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.irrigate-hint {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
 .realm-filter {
   display: flex;
   flex-wrap: wrap;

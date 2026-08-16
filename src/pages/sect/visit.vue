@@ -4,14 +4,36 @@
     <view class="content" v-if="member">
       <view class="panel">
         <view class="hero">
-          <view class="avatar avatar--lg">{{ member.avatar }}</view>
+          <PlayerAvatar
+            v-if="member.self"
+            :gender="player.gender"
+            :fallback-char="member.avatar"
+            size="lg"
+          />
+          <PortraitAvatar
+            v-else
+            :name="member.name"
+            :fallback-char="member.avatar"
+            size="lg"
+          />
           <view class="hero__body">
             <text class="name">{{ member.name }}{{ member.self ? ' · 我' : '' }}</text>
             <text class="meta">{{ member.title }} · {{ member.realm }}</text>
+            <text v-if="member.source !== 'market' && member.division" class="meta">
+              归属 {{ member.division }}
+            </text>
             <text class="meta">战力 {{ member.power.toLocaleString() }}</text>
-            <view v-if="!member.self" class="favor">
+            <view v-if="member.source === 'market'" class="favor">
+              <text class="muted">来源</text>
+              <text class="jade">坊市偶遇 · {{ member.kind || '修士' }}</text>
+            </view>
+            <view v-else-if="!member.self" class="favor">
               <text class="muted">态度</text>
               <text class="hp">{{ member.attitude || '中立' }}</text>
+            </view>
+            <view v-if="!member.self" class="favor">
+              <text class="muted">亲密</text>
+              <text class="gold">{{ intimacyText }}</text>
             </view>
           </view>
         </view>
@@ -20,19 +42,23 @@
       <view class="panel">
         <view class="section-title">
           <text class="section-title__main">人物情报</text>
-          <text class="section-title__sub">性格与专长</text>
+          <text class="section-title__sub">{{ member.source === 'market' ? '性格与事迹' : '性格与专长' }}</text>
         </view>
         <view class="info-row">
           <text class="info-label">性格</text>
           <text class="info-val">{{ member.personality || '未知' }}</text>
         </view>
-        <view class="info-row">
+        <view v-if="member.source !== 'market'" class="info-row">
           <text class="info-label">专长</text>
           <text class="info-val">{{ member.specialty || '未知' }}</text>
         </view>
-        <view v-if="member.note" class="info-row">
+        <view v-if="member.note && member.source !== 'market'" class="info-row">
           <text class="info-label">隐情</text>
           <text class="info-val jade">{{ member.note }}</text>
+        </view>
+        <view v-if="member.source === 'market'" class="info-row info-row--stack">
+          <text class="info-label">事件</text>
+          <text class="info-val gold market-event">{{ member.specialty }}</text>
         </view>
       </view>
 
@@ -41,13 +67,54 @@
           <text class="section-title__main">互动</text>
           <text class="section-title__sub">选择与对方的互动方式</text>
         </view>
-        <view v-for="action in actions" :key="action.title" class="row-item" @tap="toast(action.title)">
-          <view class="row-item__body">
-            <text class="row-item__title">{{ action.title }}</text>
-            <text class="row-item__desc">{{ action.desc }}</text>
+        <view v-for="action in actions" :key="action.title" class="action-row" @tap="onAction(action.title)">
+          <view class="action-row__body">
+            <text class="action-row__title">{{ action.title }}</text>
+            <text class="action-row__desc">{{ action.desc }}</text>
+            <text v-if="actionNote(action)" class="action-row__note">{{ actionNote(action) }}</text>
           </view>
           <text class="arrow">›</text>
         </view>
+      </view>
+
+      <view v-if="isMerchant && merchantOffers.length" class="panel">
+        <view class="section-title">
+          <text class="section-title__main">行商私货</text>
+          <text class="section-title__sub">略高一境 · {{ merchantOffers.length }} 件</text>
+        </view>
+        <view v-for="item in merchantOffers" :key="item.id" class="mer-card">
+          <view class="mer-card__art">
+            <HerbIcon v-if="item.materialKind === 'herb'" :name="item.name" size="md" />
+            <OreIcon v-else-if="item.materialKind === 'ore'" :name="item.name" size="md" />
+            <PillIcon v-else-if="item.category === '丹药'" :name="item.name" size="md" />
+            <TechniqueIcon v-else-if="item.category === '功法'" :name="item.name" size="md" />
+            <TreasureIcon
+              v-else-if="item.category === '法宝'"
+              :name="item.name"
+              :grade="item.treasure?.gradeLabel"
+              :type="item.treasure?.type"
+              size="md"
+            />
+            <view v-else class="mer-card__fallback">{{ item.category.slice(0, 1) }}</view>
+          </view>
+          <view class="mer-card__body">
+            <view class="mer-card__title">
+              <text class="mer-card__name">{{ item.name }}</text>
+              <text class="tag tag--gold">{{ item.category }}</text>
+            </view>
+            <text class="mer-card__meta">{{ item.meta }}</text>
+            <text class="mer-card__effect">{{ item.effect }}</text>
+          </view>
+          <view
+            class="mer-card__buy"
+            :class="canBuyMerchant(item) ? 'mer-card__buy--ok' : 'mer-card__buy--off'"
+            @tap="buyMerchantOffer(item)"
+          >
+            <text class="mer-card__buy-label">灵石</text>
+            <text class="mer-card__buy-price">{{ item.price.toLocaleString() }}</text>
+          </view>
+        </view>
+        <text class="hint">丹药 / 功法 / 法宝 / 药材 / 矿石 · 随日刷新</text>
       </view>
     </view>
     <view v-else class="content">
@@ -60,16 +127,58 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import PageHeader from '../../components/PageHeader.vue'
-import { memberGroupFromTitle } from '../../constants/member-catalog'
+import HerbIcon from '../../components/HerbIcon.vue'
+import OreIcon from '../../components/OreIcon.vue'
+import PillIcon from '../../components/PillIcon.vue'
+import PlayerAvatar from '../../components/PlayerAvatar.vue'
+import PortraitAvatar from '../../components/PortraitAvatar.vue'
+import TechniqueIcon from '../../components/TechniqueIcon.vue'
+import TreasureIcon from '../../components/TreasureIcon.vue'
+import {
+  estimateNpcPower,
+  type AdventureNpc
+} from '../../constants/adventure-npc-catalog'
+import type { MarketOffer } from '../../constants/market-shop'
+import { memberGroupFromTitle, type MemberGroup } from '../../constants/member-catalog'
+import {
+  formatMissionConditionText,
+  isEscortMissionKind,
+  resolveEscortMembers
+} from '../../constants/mission-catalog'
+import { inferCharacterGender } from '../../constants/default-avatar-src'
+import {
+  battleWinChanceByPowerGap,
+  rollBattleOutcome,
+  rollPlayerBattleFate
+} from '../../constants/adventure-battle'
+import {
+  formatCliffSentenceLabel,
+  formatDurationMs,
+  rollDeathDuelLoot,
+  summarizeDeathDuelLoot
+} from '../../constants/sect-duel'
+import { getRealmPracticeExpBase } from '../../constants/realm-exp'
+import { rollSparOutcome } from '../../constants/spar'
+import { DUAL_CULTIVATION_INTIMACY_MIN, formatIntimacy, INTIMACY_GIFT, INTIMACY_INVITE_ADVENTURE } from '../../constants/intimacy'
+import type { TreasureGrade } from '../../constants/treasure'
+import { ADVENTURE_COMPANION_MAX, useAdventureStore } from '../../stores/adventure'
 import { usePlayerStore } from '../../stores/player'
 import { useSectStore, type Member } from '../../stores/sect'
+import { useTreasureStore } from '../../stores/treasure'
+
+type VisitMember = Member & {
+  source?: 'sect' | 'market'
+  kind?: string
+}
 
 const sect = useSectStore()
 const player = usePlayerStore()
+const adventure = useAdventureStore()
+const treasure = useTreasureStore()
 
-const selfMember = computed<Member>(() => {
+const selfMember = computed<VisitMember>(() => {
   const rank = player.rank || '外门弟子'
   return {
     id: 'self',
@@ -80,30 +189,424 @@ const selfMember = computed<Member>(() => {
     avatar: (player.name || '我').slice(0, 1),
     tone: 'jade',
     group: memberGroupFromTitle(rank),
+    division: '未划分',
     personality: '坚韧',
     specialty: '修行问道',
     note: '',
     attitude: '',
     sectId: (sect.sectId || 'qingyun') as Member['sectId'],
-    self: true
+    self: true,
+    source: 'sect'
   }
 })
 
-const member = computed(() => {
+function mapMarketNpc(npc: AdventureNpc): VisitMember {
+  return {
+    id: npc.id,
+    name: npc.name,
+    title: npc.title,
+    realm: npc.realm,
+    power: estimateNpcPower(npc.realm, npc.id),
+    avatar: npc.avatar || npc.name.slice(0, 1),
+    tone: 'jade',
+    group: '外门弟子' as MemberGroup,
+    division: '未划分',
+    personality: npc.personality,
+    specialty: npc.event,
+    note: `常出没于${npc.place}`,
+    attitude: '中立',
+    sectId: (sect.sectId || 'qingyun') as Member['sectId'],
+    self: false,
+    source: 'market',
+    kind: npc.kind
+  }
+}
+
+const member = computed<VisitMember | null>(() => {
+  if (adventure.visitNpc) return mapMarketNpc(adventure.visitNpc)
   if (sect.visitTargetId === 'self') return selfMember.value
-  return sect.members.find((item) => item.id === sect.visitTargetId) || null
+  const found = sect.members.find((item) => item.id === sect.visitTargetId)
+  return found ? { ...found, source: 'sect' as const } : null
 })
 
-const actions = [
-  { title: '邀请历练', desc: '结伴探索秘境，共获机缘' },
-  { title: '切磋比武', desc: '点到为止，印证所学' },
-  { title: '生死比斗', desc: '生死之约，谨慎开启' },
-  { title: '赠送物品', desc: '赠予礼物，提升好感' },
-  { title: '邀请双修', desc: '双修悟道，互益修为' }
-]
+const intimacyText = computed(() => {
+  const target = member.value
+  if (!target || target.self) return ''
+  return formatIntimacy(player.getIntimacy(target.id, target.attitude))
+})
+
+useDidShow(() => {
+  adventure.ensureDailyMarket(player.realmState.major)
+  const npc = adventure.visitNpc
+  if (npc?.kind === '商人') {
+    adventure.ensureMerchantShop(npc.id, player.realmState.major)
+  }
+  const target = member.value
+  if (target && !target.self) {
+    player.ensureIntimacySeed(target.id, target.attitude)
+    player.persist()
+  }
+})
+
+const isMerchant = computed(
+  () => member.value?.source === 'market' && member.value.kind === '商人'
+)
+
+const merchantOffers = computed(() => {
+  if (!isMerchant.value || !member.value) return [] as MarketOffer[]
+  return adventure.getMerchantOffers(member.value.id)
+})
+
+const actions = computed(() => {
+  const list = [
+    { title: '邀请历练', desc: '结伴探索秘境；邀请与同行结束均可增亲密' },
+    { title: '切磋比武', desc: '点到为止，印证所学' },
+    {
+      title: '生死比斗',
+      desc: '胜则尽夺对方资源，败则伤或陨'
+    },
+    { title: '赠送物品', desc: '消耗药材或丹药，提升亲密' },
+    { title: '邀请双修', desc: '邀至洞府双修，仅增修为' }
+  ]
+  const target = member.value
+  const mission = sect.activeMission
+  const kind = mission?.objective?.kind
+  if (isEscortMissionKind(kind)) {
+    const route = resolveEscortMembers(mission, sect.members)
+    let desc = formatMissionConditionText(mission, sect.members)
+    if (route.pickupName && route.deliverName) {
+      if (route.phase === 'none') {
+        desc = target?.id === route.pickupId
+          ? `在此领取，再送往 ${route.deliverName}`
+          : `请先拜访 ${route.pickupName} 领取`
+      } else if (route.phase === 'holding') {
+        desc = target?.id === route.deliverId
+          ? `在此送达（来自 ${route.pickupName}）`
+          : `请送达 ${route.deliverName}`
+      } else {
+        desc = '已送达，可回角色页完成'
+      }
+    }
+    list.unshift({ title: '任务交接', desc })
+  }
+  if (kind === 'market_talk' && target?.source === 'market') {
+    list.unshift({ title: '寻访交谈', desc: '完成寻访散修任务' })
+  }
+  if (kind === 'rescue_talk' && target && !target.self) {
+    list.unshift({ title: '营救交谈', desc: '安抚被困弟子' })
+  }
+  if (!target || target.self) {
+    return list.filter(
+      (item) =>
+        item.title !== '邀请双修' &&
+        item.title !== '切磋比武' &&
+        item.title !== '生死比斗'
+    )
+  }
+  let next = list
+  if (target.source === 'market' && target.kind === '商人') {
+    next = next.filter(
+      (item) =>
+        item.title !== '邀请历练' &&
+        item.title !== '切磋比武' &&
+        item.title !== '生死比斗'
+    )
+  }
+  // 生死比斗仅限宗门同门
+  if (target.source === 'market') {
+    next = next.filter((item) => item.title !== '生死比斗')
+  }
+  const targetGender = inferCharacterGender(target.name)
+  const intimacy = player.getIntimacy(target.id, target.attitude)
+  if (targetGender === player.gender || intimacy < DUAL_CULTIVATION_INTIMACY_MIN) {
+    return next.filter((item) => item.title !== '邀请双修')
+  }
+  return next
+})
 
 function toast(title: string) {
   Taro.showToast({ title, icon: 'none' })
+}
+
+function actionNote(action: { title: string; desc: string }) {
+  if (action.title === '生死比斗' && member.value && !member.value.self) {
+    return `执法堂押往思过崖 · 胜后思过 ${formatCliffSentenceLabel(member.value.group)}`
+  }
+  if (action.title === '邀请历练' && member.value && !member.value.self) {
+    if (adventure.hasCompanion(member.value.id)) {
+      return `已在同行名单（${adventure.companionCount}/${ADVENTURE_COMPANION_MAX}）`
+    }
+    return `空位 ${adventure.companionSlotsLeft}`
+  }
+  return ''
+}
+
+function handleDeathDuelDefeat(enemyName: string, enemyPower: number) {
+  const myPower = player.combatPower
+  const { fate, deathChance, injuryChance } = rollPlayerBattleFate(myPower, enemyPower)
+  const deathPct = Math.round(deathChance * 100)
+  const injuryPct = Math.round(injuryChance * 100)
+  if (fate === 'death') {
+    player.persist()
+    Taro.showModal({
+      title: '身死道消',
+      content: `你败于「${enemyName}」的生死比斗，此世修为尽散（阵亡风险约 ${deathPct}%）。是否重新开辟道途？`,
+      confirmText: '重新开始',
+      showCancel: false,
+      success: () => {
+        player.wipeOnDeath()
+        Taro.reLaunch({ url: '/pages/create/index' })
+      }
+    })
+    return
+  }
+  if (fate === 'injury') {
+    player.setInjured(true)
+    player.persist()
+    return toast(`死斗落败，身受重伤（约 ${injuryPct}%），需丹药疗伤`)
+  }
+  toast('死斗落败，侥幸脱身')
+}
+
+function startDeathDuel() {
+  const target = member.value
+  if (!target || target.self) return toast('不可与自己比斗')
+  if (target.source === 'market') return toast('生死比斗仅限宗门同门')
+  if (player.injured) return toast('伤势未愈，不宜死斗')
+  if (player.onCliff) return toast('思过崖面壁期间不可动手')
+
+  const winPct = Math.round(battleWinChanceByPowerGap(player.combatPower, target.power) * 100)
+  const sentence = formatCliffSentenceLabel(target.group)
+  Taro.showModal({
+    title: '生死比斗',
+    content: `与「${target.name}」（${target.group}）约死斗。\n胜率约 ${winPct}%\n胜：尽夺对方资源，并入思过崖面壁 ${sentence}\n败：重伤或身死道消\n是否开启？`,
+    confirmText: '死斗',
+    confirmColor: '#c45c5c',
+    success: (res) => {
+      if (!res.confirm) return
+      const outcome = rollBattleOutcome(player.combatPower, target.power)
+      if (!outcome.won) {
+        handleDeathDuelDefeat(target.name, target.power)
+        return
+      }
+      const loot = rollDeathDuelLoot({ group: target.group, realm: String(target.realm) })
+      player.applyDeathDuelLoot(loot)
+      player.startCliffPunishment({
+        targetName: target.name,
+        targetGroup: target.group,
+        reason: `与同门「${target.name}」生死比斗，夺其资财`
+      })
+      player.addIntimacy(target.id, -40, target.attitude)
+      player.persist()
+      const summary = summarizeDeathDuelLoot(loot)
+      Taro.showModal({
+        title: '死斗胜',
+        content: `你击败「${target.name}」，尽夺其资源：\n${summary}\n\n执法堂已将你押往思过崖，面壁 ${sentence}（剩余 ${formatDurationMs(player.cliffRemainMs)}）。`,
+        confirmText: '前往思过崖',
+        cancelText: '稍后',
+        success: (nav) => {
+          if (nav.confirm) {
+            Taro.navigateTo({ url: '/pages/sect/cliff' })
+          }
+        }
+      })
+    }
+  })
+}
+
+function inviteToAdventure() {
+  const target = member.value
+  if (!target || target.self) return toast('不可邀请自己')
+  const result = adventure.inviteCompanion({
+    id: target.id,
+    name: target.name,
+    title: target.title,
+    realm: String(target.realm),
+    power: target.power,
+    avatar: target.avatar,
+    group: target.kind || target.group || '同行'
+  })
+  if (!result.ok) {
+    if (result.reason === 'already') return toast('已在同行名单中')
+    if (result.reason === 'full') return toast(`同行已满（最多 ${ADVENTURE_COMPANION_MAX} 人）`)
+    return toast('邀请失败')
+  }
+  const next = player.addIntimacy(target.id, INTIMACY_INVITE_ADVENTURE, target.attitude)
+  player.persist()
+  toast(`已邀请${target.name}同行 · 亲密 ${formatIntimacy(next)}`)
+}
+
+function canBuyMerchant(item: MarketOffer) {
+  if (item.category === '功法' && player.getBagCount(item.name, '功法') > 0) return false
+  if (player.spiritStones < item.price) return false
+  return true
+}
+
+function buyMerchantOffer(item: MarketOffer) {
+  if (!isMerchant.value) return
+  if (item.category === '功法' && player.getBagCount(item.name, '功法') > 0) {
+    return toast('已拥有该功法')
+  }
+  if (!player.spendStones(item.price)) return toast('灵石不足')
+
+  if (item.category === '丹药') {
+    player.addBagItem(item.name, '丹药')
+  } else if (item.category === '功法') {
+    player.addBagItem(item.name, '功法')
+    sect.syncLearnedFromBag(
+      player.bag,
+      player.activeTechniqueId || null,
+      player.spellProficiency,
+      player.techniqueProficiency
+    )
+  } else if (item.category === '药材') {
+    player.addBagItem(item.name, '药材')
+  } else if (item.category === '矿石') {
+    player.addBagItem(item.name, '矿石')
+  } else if (item.category === '法宝' && item.treasure) {
+    treasure.addTreasure({
+      id: `mer-${item.catalogId}-${Date.now()}`,
+      name: item.name,
+      grade: item.treasure.grade as TreasureGrade,
+      gradeLabel: item.treasure.gradeLabel,
+      type: item.treasure.type,
+      desc: item.effect,
+      special: item.treasure.special,
+      story: item.treasure.story,
+      equipped: false,
+      level: 1,
+      refine: 0
+    })
+  }
+
+  player.persist()
+  toast(`已购得${item.name}`)
+}
+
+function giftItem() {
+  const target = member.value
+  if (!target || target.self) return toast('不可赠予自己')
+  const gift =
+    player.bag.find((item) => item.category === '药材' && item.count > 0) ||
+    player.bag.find((item) => item.category === '丹药' && item.count > 0)
+  if (!gift) return toast('背包无药材或丹药可赠')
+  if (!player.removeBagItem(gift.name, gift.category, 1)) return toast('赠送失败')
+  const next = player.addIntimacy(target.id, INTIMACY_GIFT, target.attitude)
+  player.persist()
+  toast(`赠予${gift.name}，亲密 ${formatIntimacy(next)}`)
+}
+
+function onAction(title: string) {
+  if (title === '邀请历练') {
+    inviteToAdventure()
+    return
+  }
+  if (title === '切磋比武') {
+    if (!member.value || member.value.self) return toast('不可与自己切磋')
+    if (player.injured) return toast('伤势未愈，不宜切磋')
+    sect.reportMissionProgress('spar', 1)
+    const next = player.addIntimacy(member.value.id, 2, member.value.attitude)
+
+    const spellNames = player.bag
+      .filter((item) => item.category === '法术')
+      .map((item) => item.name)
+    const outcome = rollSparOutcome(spellNames, getRealmPracticeExpBase(player.realmState))
+    const parts: string[] = [`与${member.value.name}切磋获胜`, `亲密 ${formatIntimacy(next)}`]
+
+    if (outcome.spellName && outcome.spellProfGain > 0) {
+      const result = player.addSpellProficiency(outcome.spellName, outcome.spellProfGain)
+      sect.applySpellProficiency(player.spellProficiency)
+      parts.push(`《${outcome.spellName}》熟练 +${result.gain}`)
+      if (result.tierUp) parts.push(`进境：${result.name}`)
+    }
+    if (outcome.expGain > 0 && player.exp < player.expMax) {
+      const before = player.exp
+      player.addExp(outcome.expGain)
+      const actual = Math.round((player.exp - before) * 10) / 10
+      if (actual > 0) parts.push(`修为 +${actual}`)
+    }
+    if (outcome.injured) {
+      player.setInjured(true)
+      parts.push('不慎受伤，战力暂减')
+    }
+    player.persist()
+    return toast(parts.join(' · '))
+  }
+  if (title === '生死比斗') {
+    return startDeathDuel()
+  }
+  if (title === '赠送物品') {
+    return giftItem()
+  }
+  if (title === '任务交接') {
+    return handleEscortTalk()
+  }
+  if (title === '寻访交谈') {
+    const target = member.value
+    sect.reportMissionProgress('market_talk', 1)
+    if (target && !target.self) {
+      const next = player.addIntimacy(target.id, 3, target.attitude)
+      player.persist()
+      return toast(`已寻访交谈 · 亲密 ${formatIntimacy(next)}`)
+    }
+    return toast('已寻访散修，任务进度已更新')
+  }
+  if (title === '营救交谈') {
+    const target = member.value
+    sect.reportMissionProgress('rescue_talk', 1)
+    if (target && !target.self) {
+      const next = player.addIntimacy(target.id, 5, target.attitude)
+      player.persist()
+      return toast(`已安抚 · 亲密 ${formatIntimacy(next)}`)
+    }
+    return toast('已安抚被困弟子，任务进度已更新')
+  }
+  if (title === '邀请双修') {
+    const target = member.value
+    if (!target || target.self) return toast('不可与自己双修')
+    if (inferCharacterGender(target.name) === player.gender) {
+      return toast('同性不可双修')
+    }
+    const intimacy = player.getIntimacy(target.id, target.attitude)
+    if (intimacy < DUAL_CULTIVATION_INTIMACY_MIN) {
+      return toast(`亲密不足 ${DUAL_CULTIVATION_INTIMACY_MIN}，暂不可双修`)
+    }
+    player.setDualPartner({
+      id: target.id,
+      name: target.name,
+      gender: inferCharacterGender(target.name),
+      attitude: target.attitude
+    })
+    player.persist()
+    return toast(`已邀${target.name}至洞府双修，请前往洞府`)
+  }
+  toast(title)
+}
+
+function handleEscortTalk() {
+  const mission = sect.activeMission
+  const target = member.value
+  if (!mission || !target || target.self) return toast('目标无效')
+  const kind = mission.objective?.kind
+  if (!isEscortMissionKind(kind)) return toast('当前无护送任务')
+  const route = resolveEscortMembers(mission, sect.members)
+  const phase = route.phase
+  const goods = kind === 'pill_deliver' ? '丹药' : '灵材'
+  if (phase === 'none') {
+    if (target.id !== route.pickupId) {
+      return toast(`请先拜访领取人：${route.pickupName || '指定弟子'}`)
+    }
+    sect.advanceEscortPhase('holding')
+    return toast(`已领到${goods}，请送往：${route.deliverName || '指定弟子'}`)
+  }
+  if (phase === 'holding') {
+    if (target.id !== route.deliverId) {
+      return toast(`请送达：${route.deliverName || '指定弟子'}`)
+    }
+    sect.advanceEscortPhase('done')
+    return toast(`已送达 ${route.deliverName || '指定弟子'}，进度达成`)
+  }
+  return toast('该任务已送达')
 }
 </script>
 
@@ -117,7 +620,42 @@ function toast(title: string) {
 .muted { color: var(--text-muted); }
 .hp { color: var(--hp); }
 .jade { color: var(--jade); }
-.arrow { color: var(--text-muted); font-size: 18px; }
+.arrow { color: var(--text-muted); font-size: 18px; line-height: 1; }
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border-radius: 10px;
+}
+.action-row + .action-row {
+  margin-top: 4px;
+}
+.action-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.action-row__title {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.action-row__desc,
+.action-row__note {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+.action-row__note {
+  color: var(--gold);
+}
 .info-row {
   display: flex;
   gap: 10px;
@@ -137,10 +675,109 @@ function toast(title: string) {
   color: var(--text);
   line-height: 1.4;
 }
+.info-row--stack {
+  flex-direction: column;
+  gap: 6px;
+}
+.info-row--stack .info-label {
+  width: auto;
+}
+.market-event {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
+.gold { color: var(--gold); }
 .empty-tip {
   padding: 16px 4px;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
+.hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.mer-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(46, 59, 89, 0.35);
+}
+.mer-card:last-of-type {
+  border-bottom: none;
+}
+.mer-card__art {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mer-card__fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(46, 59, 89, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.mer-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.mer-card__title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mer-card__name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+.mer-card__meta,
+.mer-card__effect {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+.mer-card__buy {
+  flex-shrink: 0;
+  min-width: 56px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+.mer-card__buy--ok {
+  background: rgba(201, 162, 39, 0.18);
+  border: 1px solid rgba(201, 162, 39, 0.45);
+}
+.mer-card__buy--off {
+  background: rgba(46, 59, 89, 0.25);
+  opacity: 0.55;
+}
+.mer-card__buy-label {
+  display: block;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.mer-card__buy-price {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
 }
 </style>

@@ -46,7 +46,7 @@ function go(item: (typeof tabs)[number]) {
   display: flex;
   align-items: center;
   background: var(--tab-bg);
-  border: 1px solid rgba(224, 123, 108, 0.25);
+  border: 1px solid var(--tab-border);
   border-radius: 31px;
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow-tab);
@@ -65,8 +65,8 @@ function go(item: (typeof tabs)[number]) {
 }
 
 .tabbar__item--active {
-  background: rgba(139, 26, 34, 0.95);
-  box-shadow: 0 0 15px rgba(139, 26, 34, 0.4);
+  background: var(--tab-active);
+  box-shadow: 0 0 15px var(--tab-active-glow);
 }
 
 .tabbar__icon {

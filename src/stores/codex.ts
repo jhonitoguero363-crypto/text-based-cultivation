@@ -7,11 +7,14 @@ import { SECT_MEMBER_CATALOG } from '../constants/member-catalog'
 import { ORE_MATERIALS } from '../constants/ore-catalog'
 import { PET_SHOP_CATALOG } from '../constants/pet-catalog'
 import { PILL_SHOP_CATALOG } from '../constants/pill-catalog'
+import { SPELL_CATALOG } from '../constants/spell-catalog'
+import { TECHNIQUE_CATALOG } from '../constants/technique-catalog'
+import { LOOT_MATERIALS } from '../constants/loot-material-catalog'
 import { FORGE_SHOP_CATALOG } from '../constants/treasure-catalog'
 import { usePlayerStore } from './player'
 import { useTreasureStore } from './treasure'
 
-export type CodexTab = '灵兽' | '法宝' | '丹药' | '药材' | '矿石' | '人物'
+export type CodexTab = '灵兽' | '法宝' | '功法' | '法术' | '丹药' | '药材' | '矿石' | '材料' | '人物'
 
 export interface CodexEntry {
   id: string
@@ -20,15 +23,40 @@ export interface CodexEntry {
   unlocked: boolean
   /** 灵兽图鉴图标：兽阁灵宠 / 野妖 */
   icon?: 'pet' | 'beast'
-  /** 灵兽来源 */
-  origin?: '灵宠' | '妖兽' | '兼有'
+  /** 灵兽来源 / 功法流派 / 法术属性等短标签 */
+  origin?: string
 }
 
-export const CODEX_TABS: CodexTab[] = ['灵兽', '法宝', '丹药', '药材', '矿石', '人物']
+export const CODEX_TABS: CodexTab[] = [
+  '灵兽',
+  '法宝',
+  '功法',
+  '法术',
+  '丹药',
+  '药材',
+  '矿石',
+  '材料',
+  '人物'
+]
 
-function materialOwned(name: string) {
+function herbOwned(name: string) {
+  const player = usePlayerStore()
+  return player.getBagCount(name, '药材') > 0
+}
+
+function oreOwned(name: string) {
+  const player = usePlayerStore()
+  return player.getBagCount(name, '矿石') > 0
+}
+
+function lootOwned(name: string) {
   const player = usePlayerStore()
   return player.getBagCount(name, '材料') > 0
+}
+
+function bagOwned(name: string, category: string) {
+  const player = usePlayerStore()
+  return player.bag.some((item) => item.category === category && item.name === name)
 }
 
 export const useCodexStore = defineStore('codex', () => {
@@ -81,9 +109,30 @@ export const useCodexStore = defineStore('codex', () => {
       id: item.id,
       name: item.name,
       detail: `${item.gradeLabel} · ${item.realm} · ${item.type} · ${item.effect}`,
-      unlocked: owned.has(item.name)
+      unlocked: owned.has(item.name),
+      origin: item.type
     }))
   })
+
+  const techniques = computed<CodexEntry[]>(() =>
+    TECHNIQUE_CATALOG.map((item) => ({
+      id: item.id,
+      name: item.name,
+      detail: `${item.grade} · ${item.school} · ${item.type} · ${item.realmLabel} · ${item.effect}`,
+      unlocked: bagOwned(item.name, '功法'),
+      origin: item.school
+    }))
+  )
+
+  const spells = computed<CodexEntry[]>(() =>
+    SPELL_CATALOG.map((item) => ({
+      id: item.id,
+      name: item.name,
+      detail: `${item.grade} · ${item.attr} · ${item.type} · ${item.realm} · ${item.effect}`,
+      unlocked: bagOwned(item.name, '法术'),
+      origin: item.attr
+    }))
+  )
 
   const pills = computed<CodexEntry[]>(() => {
     const player = usePlayerStore()
@@ -93,7 +142,7 @@ export const useCodexStore = defineStore('codex', () => {
     return PILL_SHOP_CATALOG.map((item) => ({
       id: item.id,
       name: item.name,
-      detail: `${item.grade} · ${item.realm} · ${item.type} · ${item.effect}`,
+      detail: `${item.grade} · 难度${item.craftDifficulty} · ${item.realm} · ${item.type} · ${item.effect}`,
       unlocked: owned.has(item.name)
     }))
   })
@@ -103,7 +152,7 @@ export const useCodexStore = defineStore('codex', () => {
       id: item.id,
       name: item.name,
       detail: `${item.level} · ${item.attr} · ${item.origin} · 可炼 ${item.pills.join('、')}`,
-      unlocked: materialOwned(item.name)
+      unlocked: herbOwned(item.name)
     }))
   )
 
@@ -112,7 +161,17 @@ export const useCodexStore = defineStore('codex', () => {
       id: item.id,
       name: item.name,
       detail: `${item.level} · ${item.attr} · ${item.origin} · 可炼 ${item.treasures.join('、')}`,
-      unlocked: materialOwned(item.name)
+      unlocked: oreOwned(item.name)
+    }))
+  )
+
+  const lootMaterials = computed<CodexEntry[]>(() =>
+    LOOT_MATERIALS.map((item) => ({
+      id: item.id,
+      name: item.name,
+      detail: item.detail,
+      unlocked: lootOwned(item.name),
+      origin: item.origin
     }))
   )
 
@@ -145,12 +204,18 @@ export const useCodexStore = defineStore('codex', () => {
     switch (tab.value) {
       case '法宝':
         return treasures.value
+      case '功法':
+        return techniques.value
+      case '法术':
+        return spells.value
       case '丹药':
         return pills.value
       case '药材':
         return herbs.value
       case '矿石':
         return ores.value
+      case '材料':
+        return lootMaterials.value
       case '人物':
         return people.value
       default:
@@ -172,9 +237,12 @@ export const useCodexStore = defineStore('codex', () => {
     tab,
     spiritBeasts,
     treasures,
+    techniques,
+    spells,
     pills,
     herbs,
     ores,
+    lootMaterials,
     people,
     currentList,
     progressText,

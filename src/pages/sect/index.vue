@@ -17,7 +17,11 @@
             <view class="sect-option__avatar" :class="`tone-${item.tone}`">{{ item.name.slice(0, 1) }}</view>
             <view class="sect-option__info">
               <text class="sect-option__name">{{ item.name }}</text>
-              <text class="sect-option__tag" :class="`tone-${item.tone}`">{{ item.tag }}</text>
+              <view class="sect-option__tags">
+                <text class="sect-option__tier">{{ item.tier }}</text>
+                <text class="sect-option__faction">{{ item.faction }}</text>
+                <text class="sect-option__tag" :class="`tone-${item.tone}`">{{ item.tag }}</text>
+              </view>
             </view>
             <view class="btn btn--gold sect-option__join">加入</view>
           </view>
@@ -40,25 +44,13 @@
           <view class="hero__top">
             <view>
               <text class="hero__name">{{ sect.name }}</text>
-              <text class="hero__desc">{{ sect.tag }} · {{ sect.base }}</text>
+              <text class="hero__desc">{{ sect.faction }} · {{ sect.tag }} · {{ sect.base }}</text>
             </view>
-            <view class="level-badge">Lv.{{ sect.level }}</view>
+            <view class="tier-badge">{{ sect.tier }}</view>
           </view>
           <text class="hero__intro">{{ sect.desc }}</text>
-          <view class="stat-grid">
-            <view class="stat-cell">
-              <text class="stat-cell__value">{{ sect.disciples }}</text>
-              <text class="stat-cell__label">弟子</text>
-            </view>
-            <view class="stat-cell">
-              <text class="stat-cell__value">Lv.{{ sect.veinLevel }}</text>
-              <text class="stat-cell__label">灵脉</text>
-            </view>
-            <view class="stat-cell">
-              <text class="stat-cell__value">{{ sect.prestige.toLocaleString() }}</text>
-              <text class="stat-cell__label">声望</text>
-            </view>
-          </view>
+          <text class="hero__stipend">{{ stipendHint }}</text>
+          <text class="hero__theme">界面风格 · {{ themeLabel }}</text>
         </view>
 
         <view class="panel">
@@ -86,18 +78,28 @@
 </template>
 
 <script setup lang="ts">
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
+import { computed } from 'vue'
 import AppTabBar from '../../components/AppTabBar.vue'
 import FacilityIcon from '../../components/FacilityIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import StoneChip from '../../components/StoneChip.vue'
 import { SECT_OPTIONS, type SectOption } from '../../constants/sects'
+import { formatSectStipendHint } from '../../constants/sect-stipend'
+import { sectIdToUiTheme, UI_THEME_LABEL } from '../../constants/ui-theme'
 import { usePlayerStore } from '../../stores/player'
 import { useSectStore } from '../../stores/sect'
 
 const player = usePlayerStore()
 const sect = useSectStore()
 const sectOptions = SECT_OPTIONS
+const stipendHint = computed(() => formatSectStipendHint(player.rank))
+const themeLabel = computed(() => UI_THEME_LABEL[sectIdToUiTheme(player.sectId)])
+
+useDidShow(() => {
+  const notice = player.ensureMonthlyStipend()
+  if (notice) Taro.showToast({ title: notice, icon: 'none', duration: 2500 })
+})
 
 function go(url: string) {
   Taro.navigateTo({ url })
@@ -124,7 +126,7 @@ function facilityTone(key: string) {
 function onChoose(item: SectOption) {
   Taro.showModal({
     title: `加入${item.name}`,
-    content: `${item.desc}\n确认后将以「外门弟子」身份入门。`,
+    content: `${item.tier} · ${item.faction} · ${item.tag}\n${item.desc}\n确认后将以「外门弟子」身份入门。`,
     success: (res) => {
       if (!res.confirm) return
       const result = player.joinSect(item.id, item.name)
@@ -136,7 +138,15 @@ function onChoose(item: SectOption) {
         result.techniqueName && result.spellName
           ? `获赠《${result.techniqueName}》《${result.spellName}》`
           : '入门成功'
-      Taro.showToast({ title: `已加入${item.name}，${gift}`, icon: 'none', duration: 2500 })
+      const stipend =
+        result.stipendAmount > 0 ? ` · 月俸灵石 +${result.stipendAmount}` : ''
+      Taro.showToast({
+        title: `已加入${item.name}，${gift}${stipend}`,
+        icon: 'none',
+        duration: 2800
+      })
+      // 入宗时已弹月俸，清空待提示避免再弹一次
+      player.ensureMonthlyStipend()
     }
   })
 }
@@ -210,9 +220,27 @@ function onChoose(item: SectOption) {
   letter-spacing: -0.01em;
 }
 
+.sect-option__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.sect-option__tier {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.sect-option__faction {
+  font-size: 11px;
+  color: var(--jade);
+  font-weight: 600;
+}
+
 .sect-option__tag {
-  display: block;
-  margin-top: 2px;
   font-size: 11px;
 }
 
@@ -260,18 +288,33 @@ function onChoose(item: SectOption) {
   line-height: 1.5;
 }
 
-.hero .stat-grid {
-  margin-top: 14px;
+.hero__stipend {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--gold);
+  line-height: 1.45;
 }
 
-.level-badge {
-  padding: 4px 10px;
-  border-radius: 999px;
+.hero__theme {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--jade);
+  line-height: 1.4;
+}
+
+.tier-badge {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 8px;
   background: linear-gradient(180deg, #e6c27a, var(--gold-strong));
   color: var(--ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.02em;
   box-shadow: var(--shadow-gold);
+  white-space: nowrap;
 }
 
 .tone-gold { color: var(--gold); }

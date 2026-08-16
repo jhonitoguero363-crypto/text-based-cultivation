@@ -6,11 +6,20 @@ export type TreasureCategory = (typeof TREASURE_CATEGORIES)[number]
 
 export type TreasureSlot = '攻击位' | '防御位' | '辅助位' | '特殊位'
 
+export const TREASURE_SLOTS: TreasureSlot[] = ['攻击位', '防御位', '辅助位', '特殊位']
+
 export const TREASURE_CATEGORY_TO_SLOT: Record<TreasureCategory, TreasureSlot> = {
   攻击类: '攻击位',
   防御类: '防御位',
   辅助类: '辅助位',
   特殊类: '特殊位'
+}
+
+export const TREASURE_SLOT_TO_CATEGORY: Record<TreasureSlot, TreasureCategory> = {
+  攻击位: '攻击类',
+  防御位: '防御类',
+  辅助位: '辅助类',
+  特殊位: '特殊类'
 }
 
 /** 由类别解析装备位；兼容旧数据中的「型」后缀 */

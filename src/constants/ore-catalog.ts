@@ -2134,7 +2134,7 @@ export function getOresByLevel(level: string) {
   return ORE_MATERIALS.filter((item) => item.level === level)
 }
 
-/** 修为进度分：炼气一层≈0，飞升大圆满≈93 */
+/** 修为进度分：无修为≈0，炼气一层≈10，飞升大圆满≈100+ */
 export function getCultivationScore(realm: RealmState) {
   const majorIdx = Math.max(0, REALM_MAJORS.indexOf(realm.major))
   const stages = getStagesForMajor(realm.major)

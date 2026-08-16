@@ -8,8 +8,14 @@
           <text class="section-title__sub">进行中</text>
         </view>
         <text class="row-item__title">{{ sect.activeMission.name }}</text>
-        <text class="row-item__desc">{{ sect.activeMission.desc }}</text>
-        <text class="row-item__desc gold">{{ sect.activeMission.reward }}</text>
+        <text class="mission-item__line">{{ sect.activeMission.desc }}</text>
+        <text class="mission-item__line jade">
+          条件 · {{ activeCondition }}
+        </text>
+        <text v-if="sect.activeMission.objective?.locationHint" class="mission-item__line">
+          推荐地点 · {{ sect.activeMission.objective.locationHint }}
+        </text>
+        <text class="mission-item__line gold">奖励 · {{ sect.activeMission.reward }}</text>
         <view class="btn btn--jade btn--block" style="margin-top: 10px" @tap="goCharacter">
           前往角色查看
         </view>
@@ -21,16 +27,18 @@
           <text class="section-title__sub">常驻 5 个 · 未完成保留 · {{ dayLabel }}</text>
         </view>
         <view v-if="!sect.missions.length" class="empty-tip">任务加载中</view>
-        <view v-for="item in sect.missions" :key="item.instanceId" class="shop-item">
-          <view class="shop-item__head">
-            <view class="row-item__body">
+        <view v-for="item in sect.missions" :key="item.instanceId" class="mission-item">
+          <view class="mission-item__main">
+            <view class="mission-item__body">
               <view class="inline">
                 <text class="row-item__title">{{ item.name }}</text>
                 <text class="tag" :class="tagClass(item.tagTone)">{{ item.tag }}</text>
               </view>
-              <text class="row-item__desc">{{ item.desc }}</text>
-              <text class="row-item__desc gold">{{ item.reward }}</text>
-              <text v-if="item.playStyle" class="row-item__desc muted">玩法 · {{ item.playStyle }}</text>
+              <text class="mission-item__line">{{ item.desc }}</text>
+              <text v-if="item.objective" class="mission-item__line jade">
+                条件 · {{ conditionText(item) }}
+              </text>
+              <text class="mission-item__line gold">奖励 · {{ item.reward }}</text>
             </view>
             <view
               class="btn"
@@ -54,7 +62,11 @@ import {
   formatTianyuanCalendar,
   formatUntilNextGameDay
 } from '../../constants/game-time'
-import type { DailyMission } from '../../constants/mission-catalog'
+import {
+  formatMissionConditionText,
+  resolveEscortMembers,
+  type DailyMission
+} from '../../constants/mission-catalog'
 import { useSectStore } from '../../stores/sect'
 
 const sect = useSectStore()
@@ -63,9 +75,17 @@ const headerSub = computed(
   () => `宗门 · ${formatUntilNextGameDay()}`
 )
 
+const activeCondition = computed(() =>
+  formatMissionConditionText(sect.activeMission, sect.members)
+)
+
 onMounted(() => {
   sect.ensureDailyMissions()
 })
+
+function conditionText(item: DailyMission) {
+  return formatMissionConditionText(item, sect.members)
+}
 
 function tagClass(tone: string) {
   if (tone === 'muted') return ''
@@ -85,7 +105,7 @@ function btnClass(item: DailyMission) {
 }
 
 function toast(title: string) {
-  Taro.showToast({ title, icon: 'none', duration: 2000 })
+  Taro.showToast({ title, icon: 'none', duration: 2200 })
 }
 
 function goCharacter() {
@@ -99,32 +119,61 @@ function onAction(item: DailyMission) {
 
   const accepted = sect.acceptMission(item.instanceId)
   if (!accepted) return toast('领取失败')
+  const route = resolveEscortMembers(accepted, sect.members)
+  if (route.pickupName && route.deliverName) {
+    return toast(`已领取：${accepted.name}｜${route.pickupName}→${route.deliverName}`)
+  }
   toast(`已领取：${accepted.name}`)
 }
 </script>
 
 <style lang="scss">
 .content { padding: 0 16px 20px; }
+.jade { color: var(--jade); }
+.gold { color: var(--gold); }
+.muted { color: var(--text-muted); }
+
 .active-panel .row-item__title {
   display: block;
 }
-.active-panel .row-item__desc {
-  display: block;
-  margin-top: 4px;
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
 }
-.inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.shop-item {
-  padding: 12px 0;
+
+.mission-item {
+  padding: 8px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
-.shop-item:last-child { border-bottom: none; }
-.shop-item__head {
+.mission-item:last-child { border-bottom: none; }
+
+.mission-item__main {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
-.gold { color: var(--gold); }
-.muted { color: var(--text-muted); }
+
+.mission-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.mission-item__line {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+.active-panel .mission-item__line {
+  margin-top: 2px;
+}
+
 .empty-tip {
   padding: 12px 4px;
   text-align: center;

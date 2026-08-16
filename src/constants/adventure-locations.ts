@@ -225,8 +225,8 @@ export const ADVENTURE_LOCATIONS: AdventureLocation[] = [
     "id": "loc-24",
     "name": "无尽星域",
     "realm": "炼虚",
-    "danger": "★★★★★★★",
-    "stars": 7,
+    "danger": "★★★★★★",
+    "stars": 6,
     "drops": "星辰神材、星界晶",
     "feature": "星空探索"
   },
@@ -236,8 +236,17 @@ export const ADVENTURE_LOCATIONS: AdventureLocation[] = [
     "realm": "合体",
     "danger": "★★★★★★★",
     "stars": 7,
-    "drops": "混沌石、混元材料",
-    "feature": "混沌之力"
+    "drops": "混沌石、混沌精华",
+    "feature": "混沌之力充斥"
+  },
+  {
+    "id": "loc-26",
+    "name": "阴阳天池",
+    "realm": "合体",
+    "danger": "★★★★★★★",
+    "stars": 7,
+    "drops": "阴阳玉、造化材料",
+    "feature": "阴阳之力交织"
   }
 ] as AdventureLocation[]
 

@@ -28,7 +28,7 @@
               :class="{ 'gender-card--active': gender === '男' }"
               @tap="gender = '男'"
             >
-              <text class="gender-card__icon">乾</text>
+              <PlayerAvatar gender="男" size="lg" />
               <text class="gender-card__name">男</text>
             </view>
             <view
@@ -36,13 +36,13 @@
               :class="{ 'gender-card--active': gender === '女' }"
               @tap="gender = '女'"
             >
-              <text class="gender-card__icon">坤</text>
+              <PlayerAvatar gender="女" size="lg" />
               <text class="gender-card__name">女</text>
             </view>
           </view>
         </view>
 
-        <text class="hint">确认后将随机生成金木水火土与风冰雷灵根。冰、风、雷高灵根极为稀有。</text>
+        <text class="hint">确认后将随机生成金木水火土与风冰雷灵根，以及悟性。冰、风、雷高灵根极为稀有，且默认隐匿，唯当其为最高灵根时方在人物详情中显示。</text>
         <view class="btn btn--gold btn--block" @tap="onConfirm">踏上仙途</view>
       </view>
     </view>
@@ -52,6 +52,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
+import PlayerAvatar from '../../components/PlayerAvatar.vue'
 import { usePlayerStore, type Gender } from '../../stores/player'
 
 const player = usePlayerStore()
@@ -141,7 +142,8 @@ function onConfirm() {
 
 .gender-card {
   flex: 1;
-  height: 84px;
+  min-height: 112px;
+  padding: 12px 8px 10px;
   border-radius: 14px;
   border: 1px solid var(--border-soft);
   background: var(--panel-2);
@@ -150,19 +152,13 @@ function onConfirm() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .gender-card--active {
   border-color: rgba(217, 179, 108, 0.55);
   background: linear-gradient(180deg, rgba(217, 179, 108, 0.22), rgba(200, 154, 75, 0.08));
   box-shadow: var(--shadow-panel), 0 0 0 1px rgba(217, 179, 108, 0.18);
-}
-
-.gender-card__icon {
-  font-size: 22px;
-  color: var(--gold);
-  font-weight: 700;
 }
 
 .gender-card__name {

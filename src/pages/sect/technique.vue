@@ -4,23 +4,24 @@
     <SegmentTabs :model-value="mode" :items="modes" @update:model-value="onMode" />
 
     <view class="content">
-      <view class="panel tech-hero">
-        <view class="tech-hero__row">
-          <view>
-            <text class="tech-hero__label">宗门贡献</text>
-            <text class="tech-hero__value">{{ player.contribution.toLocaleString() }}</text>
-          </view>
-          <view class="tech-hero__stats">
-            <template v-if="mode === '功法'">
-              <text class="tech-hero__stat">修习中 {{ activeTechName || '无' }}</text>
-            </template>
-            <template v-else>
-              <text class="tech-hero__stat">已习 {{ ownedSpellCount }}</text>
-              <text class="tech-hero__divider">·</text>
-              <text class="tech-hero__stat">收录 {{ sect.spells.length }}</text>
-            </template>
-          </view>
+      <view v-if="showCopy" class="panel">
+        <view class="section-title">
+          <text class="section-title__main">藏经阁抄录</text>
+          <text class="section-title__sub">
+            {{ copying ? `抄录中 ${copyLeft}s` : copyProgressText }}
+          </text>
         </view>
+        <text class="copy-hint">完成「藏经阁抄录」任务；持续抄录满 45 秒可更新进度。</text>
+        <view
+          class="btn btn--block"
+          :class="copying ? 'btn--hp' : 'btn--jade'"
+          @tap="toggleCopy"
+        >
+          {{ copying ? '停止抄录' : '开始抄录' }}
+        </view>
+      </view>
+
+      <view class="panel tech-hero">
         <view class="tech-tabs">
           <view
             v-for="tab in gradeTabs"
@@ -62,14 +63,17 @@
             @tap="openTech(item)"
           >
             <view class="tech-seal" :class="`tech-seal--${tierKey(item.gradeTier)}`">
-              <text class="tech-seal__char">{{ item.name.slice(0, 1) }}</text>
+              <TechniqueIcon :name="item.name" :fallback-char="item.name.slice(0, 1)" size="md" />
             </view>
             <view class="tech-card__body">
               <view class="tech-card__top">
                 <text class="tech-card__name">{{ item.name }}</text>
                 <text class="tech-card__school">{{ item.school }}</text>
               </view>
-              <text class="tech-card__meta">{{ item.grade }} · {{ item.realmLabel }}</text>
+              <text class="tech-card__meta">
+                {{ item.grade }} · {{ item.realmLabel }}
+                {{ item.owned && item.proficiencyName ? ` · ${item.proficiencyName}` : '' }}
+              </text>
             </view>
             <view class="tech-card__side">
               <text v-if="item.active" class="tech-badge tech-badge--active">修习中</text>
@@ -97,7 +101,7 @@
             @tap="openSpell(item)"
           >
             <view class="tech-seal" :class="`tech-seal--${tierKey(item.gradeTier)}`">
-              <text class="tech-seal__char">{{ item.name.slice(0, 1) }}</text>
+              <SpellIcon :name="item.name" :fallback-char="item.name.slice(0, 1)" size="md" />
             </view>
             <view class="tech-card__body">
               <view class="tech-card__top">
@@ -124,7 +128,7 @@
         <text class="hint">
           {{
             mode === '功法'
-              ? '功法同时仅一门；由低品阶改修至更高品阶会损耗部分修为（跨阶越多损耗越大）。同阶或降阶不损。'
+              ? '功法同时仅一门；洞府修炼增长修为与熟练度；熟练度越高，战力与修为获取越高。由低品阶改修至更高品阶会损耗部分修为。'
               : '法术可同时修习多门；点开查看效果并以贡献兑换。'
           }}
         </text>
@@ -137,7 +141,7 @@
         <view class="tech-sheet__handle" />
         <view class="tech-sheet__head">
           <view class="tech-seal tech-seal--lg" :class="`tech-seal--${tierKey(activeTech.gradeTier)}`">
-            <text class="tech-seal__char">{{ activeTech.name.slice(0, 1) }}</text>
+            <TechniqueIcon :name="activeTech.name" :fallback-char="activeTech.name.slice(0, 1)" size="lg" />
           </view>
           <view class="tech-sheet__meta">
             <text class="tech-sheet__name">{{ activeTech.name }}</text>
@@ -153,6 +157,15 @@
         <view class="tech-sheet__block">
           <text class="tech-sheet__k">功法效果</text>
           <text class="tech-sheet__v gold">{{ activeTech.effect }}</text>
+        </view>
+        <view v-if="activeTech.owned" class="tech-sheet__block">
+          <text class="tech-sheet__k">熟练度</text>
+          <text class="tech-sheet__v">
+            {{ activeTech.proficiencyLabel || '初窥门径 · 0/99' }}
+          </text>
+          <text class="tech-sheet__v gold">
+            {{ activeTech.proficiencyEffect || '功法基础效果' }}
+          </text>
         </view>
         <view class="tech-sheet__block">
           <text class="tech-sheet__k">适合境界</text>
@@ -205,7 +218,7 @@
         <view class="tech-sheet__handle" />
         <view class="tech-sheet__head">
           <view class="tech-seal tech-seal--lg" :class="`tech-seal--${tierKey(activeSpell.gradeTier)}`">
-            <text class="tech-seal__char">{{ activeSpell.name.slice(0, 1) }}</text>
+            <SpellIcon :name="activeSpell.name" :fallback-char="activeSpell.name.slice(0, 1)" size="lg" />
           </view>
           <view class="tech-sheet__meta">
             <text class="tech-sheet__name">{{ activeSpell.name }}</text>
@@ -264,10 +277,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import PageHeader from '../../components/PageHeader.vue'
 import SegmentTabs from '../../components/SegmentTabs.vue'
+import TechniqueIcon from '../../components/TechniqueIcon.vue'
+import SpellIcon from '../../components/SpellIcon.vue'
 import type { RealmMajor } from '../../constants/realm'
 import { canLearnSpell } from '../../constants/spell-catalog'
 import {
@@ -289,6 +304,57 @@ const gradeTabs = TECHNIQUE_GRADE_TABS
 
 const activeTech = ref<SectTechnique | null>(null)
 const activeSpell = ref<SectSpell | null>(null)
+const copying = ref(false)
+const copyLeft = ref(45)
+let copyTimer: ReturnType<typeof setInterval> | null = null
+let copyElapsed = 0
+
+const showCopy = computed(() => sect.activeMission?.objective?.kind === 'technique_copy')
+const copyProgressText = computed(() => {
+  const m = sect.activeMission
+  if (!m?.objective || m.objective.kind !== 'technique_copy') return '持续 45 秒'
+  return `${m.progress || 0}/${m.objective.target} · 持续 45 秒`
+})
+
+function clearCopy() {
+  if (copyTimer) clearInterval(copyTimer)
+  copyTimer = null
+  copying.value = false
+  copyLeft.value = 45
+  copyElapsed = 0
+}
+
+function toggleCopy() {
+  if (!showCopy.value) {
+    clearCopy()
+    return
+  }
+  if (copying.value) {
+    clearCopy()
+    return toast('已停止抄录')
+  }
+  copying.value = true
+  copyLeft.value = 45
+  copyElapsed = 0
+  copyTimer = setInterval(() => {
+    if (!showCopy.value) {
+      clearCopy()
+      return
+    }
+    copyElapsed += 1
+    copyLeft.value = Math.max(0, 45 - copyElapsed)
+    if (copyElapsed >= 45) {
+      sect.reportMissionProgress('technique_copy', 1)
+      player.addExp(5)
+      player.persist()
+      clearCopy()
+      toast('抄录完成，任务进度已更新')
+    }
+  }, 1000)
+  toast('开始抄录')
+}
+
+onBeforeUnmount(() => clearCopy())
 
 const techList = computed(() => {
   if (activeTab.value === '全部') return sect.techniques
@@ -457,6 +523,14 @@ function toast(title: string) {
 .tech-hero {
   padding-bottom: 12px;
 }
+
+.copy-hint {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
 .tech-hero__row {
   display: flex;
   align-items: flex-end;
@@ -486,7 +560,7 @@ function toast(title: string) {
   max-width: 58%;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(14, 20, 36, 0.45);
+  background: var(--scrim-soft);
   border: 1px solid var(--border-soft);
 }
 .tech-hero__stat {
@@ -599,13 +673,23 @@ function toast(title: string) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 0;
+  overflow: hidden;
   background: linear-gradient(145deg, rgba(42, 58, 92, 0.9), rgba(20, 28, 48, 0.95));
   border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-panel);
 }
+.tech-seal .technique-icon,
+.tech-seal .spell-icon {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  width: 100%;
+  height: 100%;
+}
 .tech-seal--lg {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 14px;
 }
 .tech-seal__char {
@@ -779,7 +863,7 @@ function toast(title: string) {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(4, 8, 16, 0.72);
+  background: var(--overlay);
   display: flex;
   align-items: flex-end;
   justify-content: center;

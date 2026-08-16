@@ -388,6 +388,30 @@ export const FORGE_SHOP_CATALOG: CatalogTreasure[] = [
     story: '可由玩家定义全新规则',
     realm: '飞升',
     price: 150000
+  },
+  {
+    id: 'shop-wujidaobei',
+    name: '无极道碑',
+    gradeLabel: '先天至宝',
+    grade: '先天至宝',
+    type: '特殊类',
+    effect: '大道共鸣，全属性提升',
+    special: '引动无极之力改写局部规则',
+    story: '无名道碑之上更进一步的本源碑文',
+    realm: '飞升',
+    price: 180000
+  },
+  {
+    id: 'shop-taichushenjian',
+    name: '太初神剑',
+    gradeLabel: '先天至宝',
+    grade: '先天至宝',
+    type: '攻击类',
+    effect: '攻击极大提升',
+    special: '开天辟地之威，破尽诸法',
+    story: '太初开天时遗落的创世神兵',
+    realm: '飞升',
+    price: 200000
   }
 ]
 

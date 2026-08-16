@@ -68,6 +68,7 @@ import {
   rollMineReward
 } from '../../constants/ore-catalog'
 import { usePlayerStore } from '../../stores/player'
+import { useSectStore } from '../../stores/sect'
 
 const DIG_INTERVAL_MS = 5_000
 
@@ -78,6 +79,7 @@ interface MineLog {
 }
 
 const player = usePlayerStore()
+const sect = useSectStore()
 const { mineDigsUsed } = storeToRefs(player)
 const logs = ref<MineLog[]>([])
 const mining = ref(false)
@@ -135,10 +137,12 @@ function digOnce() {
   player.consumeMineDig()
   const reward = rollMineReward(player.realmState)
   if (reward.kind === 'ore') {
-    player.addBagItem(reward.name, '材料', reward.count)
+    player.addBagItem(reward.name, '矿石', reward.count)
+    sect.reportMissionProgress('collect_ore', 1)
   } else if (reward.kind === 'spirit') {
     player.earnStones(reward.amount)
   }
+  sect.reportMissionProgress('mine_dig', 1)
   player.persist()
   const text = formatMineReward(reward)
   const entry: MineLog = {

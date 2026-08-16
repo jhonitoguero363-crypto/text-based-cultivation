@@ -1,9 +1,14 @@
 import { calcSelfForgeSuccessRate, type CraftMode } from './craft-mode'
+import { getLootMaterial, isOreName } from './loot-material-catalog'
 import { ORE_MATERIALS } from './ore-catalog'
 import {
+  TREASURE_CATEGORIES,
   TREASURE_GRADES,
   canWieldTreasureGrade,
   getMaxTreasureGrade,
+  getRealmMajorIndex,
+  isTreasureCategory,
+  type TreasureCategory,
   type TreasureGrade
 } from './treasure'
 import type { RealmState } from './realm'
@@ -17,14 +22,20 @@ const ORE_STRENGTH: Record<string, number> = {
   镇界神材: 20
 }
 
+/** 历练材料强度：按来源妖兽最高境界折算（略高于同阶灵矿，低于顶级神材） */
+const LOOT_STRENGTH_BY_REALM_IDX = [2, 2, 3, 4, 5, 7, 9, 12, 15, 18]
+
 const QUALITIES = ['下品', '中品', '上品', '极品'] as const
-const TYPES = ['攻击类', '防御类', '辅助类', '特殊类'] as const
+
+export type ForgeBagKind = '矿石' | '材料'
 
 export interface ForgeMaterialInput {
   name: string
   count: number
-  /** 矿阶，未知材料按灵矿计 */
+  /** 矿阶；历练材料可空 */
   level?: string
+  /** 背包分类，扣除时用 */
+  kind?: ForgeBagKind
 }
 
 export interface ForgePreview {
@@ -65,9 +76,25 @@ export function getOreLevelByName(name: string) {
   return ORE_MATERIALS.find((item) => item.name === name)?.level || ''
 }
 
+/** 背包扣除用：矿石目录名 → 矿石，其余可炼材料 → 材料 */
+export function getForgeBagKind(name: string): ForgeBagKind {
+  if (isOreName(name) || getOreLevelByName(name)) return '矿石'
+  return '材料'
+}
+
+export function getLootMaterialStrength(name: string) {
+  const loot = getLootMaterial(name)
+  if (!loot) return 2
+  if (!loot.realms.length) return 3
+  const maxIdx = Math.max(...loot.realms.map((realm) => getRealmMajorIndex(realm)))
+  return LOOT_STRENGTH_BY_REALM_IDX[clamp(maxIdx, 0, LOOT_STRENGTH_BY_REALM_IDX.length - 1)] || 2
+}
+
 export function getMaterialStrength(name: string, level?: string) {
-  const tier = level || getOreLevelByName(name) || '灵矿'
-  return ORE_STRENGTH[tier] || 1
+  const tier = level || getOreLevelByName(name)
+  if (tier && ORE_STRENGTH[tier]) return ORE_STRENGTH[tier]
+  if (isOreName(name)) return ORE_STRENGTH['灵矿'] || 1
+  return getLootMaterialStrength(name)
 }
 
 export function calcForgeStrength(materials: ForgeMaterialInput[]) {
@@ -142,8 +169,9 @@ export function previewForge(
   }
 }
 
-function pickType() {
-  return TYPES[randInt(0, TYPES.length - 1)]
+function resolveCraftType(type?: string): TreasureCategory {
+  if (type && isTreasureCategory(type)) return type
+  return TREASURE_CATEGORIES[randInt(0, TREASURE_CATEGORIES.length - 1)]
 }
 
 function pickQuality(strength: number) {
@@ -194,11 +222,16 @@ export function craftTreasureByMaterials(input: {
   realm: RealmState
   mode?: CraftMode
   spellLevel?: number
+  /** 攻击类 / 防御类 / 辅助类 / 特殊类；打造时由玩家选定 */
+  type?: TreasureCategory | string
 }): ForgeCraftResult {
   const name = input.name.trim()
   if (!name) return { ok: false, reason: '请输入法宝名称', consumed: false }
   if (name.length < 2) return { ok: false, reason: '名称至少 2 个字', consumed: false }
   if (name.length > 8) return { ok: false, reason: '名称最多 8 个字', consumed: false }
+  if (!input.type || !isTreasureCategory(input.type)) {
+    return { ok: false, reason: '请选择法宝类别', consumed: false }
+  }
 
   const mats = input.materials.filter((item) => item.count > 0)
   if (!mats.length) return { ok: false, reason: '请投入至少一种材料', consumed: false }
@@ -224,7 +257,7 @@ export function craftTreasureByMaterials(input: {
   }
 
   const quality = pickQuality(preview.strength)
-  const type = pickType()
+  const type = resolveCraftType(input.type)
   const gradeLabel = `${quality}${grade}`
 
   return {

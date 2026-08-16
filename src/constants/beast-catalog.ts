@@ -853,3 +853,19 @@ export function estimateBeastLevel(beast: CatalogBeast) {
   }
   return base + (rarityBonus[beast.rarity] || 0) + Math.floor(Math.random() * 4)
 }
+
+/** 估算妖兽战力（与玩家战力同量级，用于出战灵兽阵亡判定） */
+export function estimateBeastPower(beast: CatalogBeast, level?: number) {
+  const idx = Math.max(0, getRealmMajorIndex(beast.realm))
+  const rarityMul: Record<string, number> = {
+    普通: 1,
+    稀有: 1.35,
+    史诗: 1.85,
+    传说: 2.55,
+    神话: 3.5,
+    至高: 4.9
+  }
+  const lv = typeof level === 'number' && level > 0 ? level : 8 + idx * 12
+  const base = 620 + idx * 920 + lv * 36 + Math.max(0, beast.weight || 0) * 6
+  return Math.max(200, Math.round(base * (rarityMul[beast.rarity] || 1)))
+}

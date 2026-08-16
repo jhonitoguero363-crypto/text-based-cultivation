@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "任务设定.md",
+                "file": "丹药设定.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "任务设定"
+              "title": "丹药设定"
             }
           }
         ]
@@ -83,7 +83,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 235.89999389648438
   },
   "right": {
     "id": "3fab68bc37902026",
@@ -190,6 +190,8 @@
   },
   "active": "c2ff12426c915557",
   "lastOpenFiles": [
+    "任务设定.md",
+    "人物设定.md",
     "图鉴-灵兽.md",
     "README.md",
     "宗门设定.md",

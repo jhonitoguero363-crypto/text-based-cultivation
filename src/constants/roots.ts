@@ -66,6 +66,13 @@ export function rollRootBones(): RootBone[] {
   })
 }
 
+/** 默认隐藏的稀有灵根：仅当其为全灵根最高值时才展示 */
+export const HIDDEN_UNLESS_PRIMARY_ROOTS: RootName[] = ['风', '冰', '雷']
+
+export function isHiddenUnlessPrimaryRoot(name: RootName | string) {
+  return HIDDEN_UNLESS_PRIMARY_ROOTS.includes(name as RootName)
+}
+
 /** 主灵根：取数值最高者 */
 export function pickPrimaryRoot(roots: RootBone[]): RootBone {
   return roots.reduce((best, cur) => (cur.value > best.value ? cur : best), roots[0])
@@ -73,4 +80,17 @@ export function pickPrimaryRoot(roots: RootBone[]): RootBone {
 
 export function formatPrimaryRoot(root: RootBone): string {
   return `${root.name}（${root.grade}）`
+}
+
+/**
+ * 界面展示用灵根列表。
+ * 金木水火土始终显示；风/冰/雷仅当其数值等于全灵根最高值时显示。
+ */
+export function visibleRootBones(roots: RootBone[]): RootBone[] {
+  if (!roots.length) return []
+  const max = Math.max(...roots.map((item) => item.value))
+  return roots.filter((item) => {
+    if (!isHiddenUnlessPrimaryRoot(item.name)) return true
+    return item.value === max
+  })
 }

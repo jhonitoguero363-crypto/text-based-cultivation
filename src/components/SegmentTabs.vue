@@ -48,10 +48,10 @@ defineEmits<{
 }
 
 .segment__item--active {
-  background: linear-gradient(180deg, rgba(91, 200, 168, 0.95), rgba(61, 160, 132, 0.95));
+  background: linear-gradient(180deg, var(--jade) 0%, var(--tab-active) 100%);
   border-color: transparent;
   color: var(--ink);
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(61, 160, 132, 0.28);
+  box-shadow: 0 2px 6px var(--jade-soft);
 }
 </style>

@@ -52,19 +52,7 @@ export const useTreasureStore = defineStore('treasure', () => {
   }
 
   function equip(id: string) {
-    const item = list.value.find((t) => t.id === id)
-    if (!item || item.equipped) return
-    const slot = getTreasureSlot(item.type)
-    // 同类仅可装备一件：替换同槽位
-    for (const other of list.value) {
-      if (other.id !== id && other.equipped && getTreasureSlot(other.type) === slot) {
-        other.equipped = false
-        other.slot = undefined
-      }
-    }
-    item.slot = slot
-    item.equipped = true
-    activeId.value = id
+    return equipToSlot(id)
   }
 
   function unequip(id: string) {
@@ -73,6 +61,37 @@ export const useTreasureStore = defineStore('treasure', () => {
       item.equipped = false
       item.slot = undefined
     }
+  }
+
+  function getEquippedInSlot(slot: TreasureSlot) {
+    return (
+      list.value.find(
+        (item) => item.equipped && (item.slot === slot || getTreasureSlot(item.type) === slot)
+      ) || null
+    )
+  }
+
+  /** 某装备位可选法宝（含已装备） */
+  function listForSlot(slot: TreasureSlot) {
+    return list.value.filter((item) => getTreasureSlot(item.type) === slot)
+  }
+
+  /** 装备到指定位；同部位仅一件 */
+  function equipToSlot(id: string, slot?: TreasureSlot) {
+    const item = list.value.find((t) => t.id === id)
+    if (!item) return false
+    const targetSlot = slot || getTreasureSlot(item.type)
+    if (getTreasureSlot(item.type) !== targetSlot) return false
+    for (const other of list.value) {
+      if (other.id !== id && other.equipped && getTreasureSlot(other.type) === targetSlot) {
+        other.equipped = false
+        other.slot = undefined
+      }
+    }
+    item.slot = targetSlot
+    item.equipped = true
+    activeId.value = id
+    return true
   }
 
   function resetForge() {
@@ -136,6 +155,9 @@ export const useTreasureStore = defineStore('treasure', () => {
     selectTreasure,
     equip,
     unequip,
+    getEquippedInSlot,
+    listForSlot,
+    equipToSlot,
     resetForge,
     resetOwned,
     addTreasure,

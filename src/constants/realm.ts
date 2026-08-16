@@ -1,5 +1,6 @@
-/** 大境界 */
+/** 大境界（含凡人起点「无修为」） */
 export const REALM_MAJORS = [
+  '无修为',
   '炼气',
   '筑基',
   '金丹',
@@ -13,6 +14,9 @@ export const REALM_MAJORS = [
 ] as const
 
 export type RealmMajor = (typeof REALM_MAJORS)[number]
+
+/** 无修为仅一档（展示为「无修为」） */
+export const MORTAL_STAGES = [''] as const
 
 /** 炼气一至九层 */
 export const QI_STAGES = [
@@ -30,9 +34,10 @@ export const QI_STAGES = [
 /** 筑基及以上阶段 */
 export const ADVANCE_STAGES = ['前期', '中期', '后期', '大圆满'] as const
 
+export type MortalStage = (typeof MORTAL_STAGES)[number]
 export type QiStage = (typeof QI_STAGES)[number]
 export type AdvanceStage = (typeof ADVANCE_STAGES)[number]
-export type RealmStage = QiStage | AdvanceStage
+export type RealmStage = MortalStage | QiStage | AdvanceStage
 
 export interface RealmState {
   major: RealmMajor
@@ -40,16 +45,23 @@ export interface RealmState {
 }
 
 export function getStagesForMajor(major: RealmMajor): readonly RealmStage[] {
+  if (major === '无修为') return MORTAL_STAGES
   return major === '炼气' ? QI_STAGES : ADVANCE_STAGES
 }
 
-/** 展示文案：炼气三层 / 筑基前期 */
+/** 展示文案：无修为 / 炼气三层 / 筑基前期 */
 export function formatRealm(major: RealmMajor, stage: RealmStage): string {
+  if (major === '无修为') return '无修为'
   return `${major}${stage}`
 }
 
 export function formatRealmState(realm: RealmState): string {
   return formatRealm(realm.major, realm.stage)
+}
+
+/** 创角 / 重置用的最低境界 */
+export function createInitialRealm(): RealmState {
+  return createRealm('无修为', '')
 }
 
 /** 下一境界；已达飞升大圆满则返回 null */
@@ -83,4 +95,22 @@ export function createRealm(major: RealmMajor, stage: RealmStage): RealmState {
     throw new Error(`境界「${major}」不支持阶段「${stage}」`)
   }
   return { major, stage }
+}
+
+/** 解析「无修为」「炼气三层」「筑基前期」等展示文案；失败返回 null */
+export function parseRealmLabel(label: string): RealmState | null {
+  const text = String(label || '').trim()
+  if (!text) return null
+  if (text === '无修为') return createInitialRealm()
+  for (let i = REALM_MAJORS.length - 1; i >= 0; i -= 1) {
+    const major = REALM_MAJORS[i]
+    if (major === '无修为') continue
+    if (!text.startsWith(major)) continue
+    const stage = text.slice(major.length).trim() as RealmStage
+    const stages = getStagesForMajor(major)
+    if (stages.includes(stage as never)) {
+      return { major, stage }
+    }
+  }
+  return null
 }

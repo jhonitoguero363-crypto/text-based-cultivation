@@ -1,7 +1,52 @@
 import type { RealmMajor } from './realm'
+import { REALM_MAJORS } from './realm'
 import { getRealmMajorIndex } from './treasure'
+import {
+  getSectMembers,
+  type CatalogMember,
+  type MemberGroup
+} from './member-catalog'
+import { getSectOption, SECT_OPTIONS, type SectFaction, type SectId } from './sects'
 
-export type AdventureNpcKind = '宗门弟子' | '散修' | '商人' | '魔修' | '隐世' | '奇遇'
+/** 秘境偶遇含宗门弟子/正道/魔道/妖族/隐世/奇遇；坊市侧重商人/正道/魔道/散修 */
+export type AdventureNpcKind =
+  | '宗门弟子'
+  | '正道修士'
+  | '散修'
+  | '商人'
+  | '魔道修士'
+  | '妖族'
+  | '隐世'
+  | '奇遇'
+
+/** 坊市人物四类 */
+export const MARKET_NPC_KINDS = ['商人', '正道修士', '魔道修士', '散修'] as const
+export type MarketNpcKind = (typeof MARKET_NPC_KINDS)[number]
+
+export function isDemonicNpcKind(kind: string | undefined | null) {
+  return kind === '魔道修士' || kind === '魔修'
+}
+
+export function normalizeAdventureNpcKind(kind: string | undefined | null): AdventureNpcKind {
+  if (kind === '魔修') return '魔道修士'
+  if (
+    kind === '宗门弟子' ||
+    kind === '正道修士' ||
+    kind === '散修' ||
+    kind === '商人' ||
+    kind === '魔道修士' ||
+    kind === '妖族' ||
+    kind === '隐世' ||
+    kind === '奇遇'
+  ) {
+    return kind
+  }
+  return '散修'
+}
+
+export function normalizeAdventureNpc(npc: AdventureNpc): AdventureNpc {
+  return { ...npc, kind: normalizeAdventureNpcKind(npc.kind) }
+}
 
 export interface AdventureNpc {
   id: string
@@ -325,18 +370,18 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "凶狠",
     "place": "各地",
     "event": "魔功 · 血刀术",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-29",
     "avatar": "黑",
     "name": "黑煞",
-    "title": "魔修",
+    "title": "魔道修士",
     "realm": "金丹",
     "personality": "阴狠",
     "place": "各地",
     "event": "魔功 · 毒煞",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-30",
@@ -347,7 +392,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "疯狂",
     "place": "各地",
     "event": "魔功 · 嗜血",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-31",
@@ -358,7 +403,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "冷漠",
     "place": "各地",
     "event": "魔功 · 魂术",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-32",
@@ -369,7 +414,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "残忍",
     "place": "各地",
     "event": "魔功 · 炼魂",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-33",
@@ -380,7 +425,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "神秘",
     "place": "各地",
     "event": "魔功 · 傀儡术",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-34",
@@ -391,7 +436,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "疯狂",
     "place": "各地",
     "event": "魔功 · 血海领域",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-35",
@@ -402,7 +447,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "淡漠",
     "place": "各地",
     "event": "魔功 · 心魔术",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-36",
@@ -413,7 +458,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "傲慢",
     "place": "各地",
     "event": "魔功 · 天魔变",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-37",
@@ -424,7 +469,7 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
     "personality": "平静",
     "place": "各地",
     "event": "魔功 · 无相魔功",
-    "kind": "魔修"
+    "kind": "魔道修士"
   },
   {
     "id": "adv-npc-38",
@@ -461,8 +506,8 @@ export const ADVENTURE_NPC_CATALOG: AdventureNpc[] = [
   },
   {
     "id": "adv-npc-41",
-    "avatar": "老",
-    "name": "老乞丐",
+    "avatar": "乞",
+    "name": "老乞少女",
     "title": "乞丐",
     "realm": "飞升",
     "personality": "深藏不露",
@@ -653,52 +698,7 @@ function pickOne<T>(list: T[]): T | null {
   return list[Math.floor(Math.random() * list.length)]
 }
 
-/**
- * 依当前历练地点随机偶遇人物：
- * - 优先该地点宗门弟子
- * - 混入同境界散修/商人/魔修
- * - 少量隐世与奇遇（各地）
- */
-export function rollEncounterNpcs(
-  locationName: string,
-  locationRealm: RealmMajor,
-  count = 1
-): AdventureNpc[] {
-  const local = ADVENTURE_NPC_CATALOG.filter((item) => item.place === locationName)
-  const sameRealm = ADVENTURE_NPC_CATALOG.filter(
-    (item) =>
-      item.place === '各地' &&
-      item.realm === locationRealm &&
-      (item.kind === '散修' || item.kind === '商人' || item.kind === '魔修')
-  )
-  const near = ADVENTURE_NPC_CATALOG.filter((item) => {
-    if (item.place !== '各地') return false
-    if (!(item.kind === '散修' || item.kind === '商人' || item.kind === '魔修')) return false
-    const diff = Math.abs(getRealmMajorIndex(item.realm) - getRealmMajorIndex(locationRealm))
-    return diff === 1
-  })
-  const special = ADVENTURE_NPC_CATALOG.filter(
-    (item) => item.kind === '隐世' || item.kind === '奇遇'
-  )
-  const discipleSame = ADVENTURE_NPC_CATALOG.filter(
-    (item) =>
-      item.kind === '宗门弟子' &&
-      item.place !== locationName &&
-      item.realm === locationRealm
-  )
-
-  const pool: AdventureNpc[] = []
-  pool.push(...local, ...local, ...local)
-  pool.push(...sameRealm, ...sameRealm)
-  pool.push(...near)
-  pool.push(...discipleSame)
-  // 隐世/奇遇低权重，但各地都可能刷到
-  pool.push(...special)
-
-  if (!pool.length) {
-    return ADVENTURE_NPC_CATALOG.slice(0, Math.min(count, ADVENTURE_NPC_CATALOG.length))
-  }
-
+function pickUnique(pool: AdventureNpc[], count: number): AdventureNpc[] {
   const result: AdventureNpc[] = []
   const used = new Set<string>()
   const unique = new Set(pool.map((item) => item.id)).size
@@ -711,4 +711,299 @@ export function rollEncounterNpcs(
     result.push(picked)
   }
   return result
+}
+
+/** 由境界估算展示战力（拜访 / 同行用） */
+export function estimateNpcPower(realm: RealmMajor, seed = '') {
+  const idx = Math.max(0, getRealmMajorIndex(realm))
+  let hash = 0
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) % 997
+  return 120 + idx * 220 + (hash % 180)
+}
+
+/** 估算人物战斗战力（与玩家战力同量级，用于出战灵兽阵亡判定） */
+export function estimateNpcBattlePower(realm: RealmMajor, seed = '') {
+  const idx = Math.max(0, getRealmMajorIndex(realm))
+  let hash = 0
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) % 997
+  return 700 + idx * 1050 + (hash % 280)
+}
+
+/** 从宗门人物境界文案解析大境界 */
+export function parseMemberRealmMajor(realmText: string): RealmMajor {
+  const text = realmText || ''
+  for (let i = REALM_MAJORS.length - 1; i >= 0; i -= 1) {
+    if (text.includes(REALM_MAJORS[i])) return REALM_MAJORS[i]
+  }
+  return '炼气'
+}
+
+const DISCIPLE_GROUPS: MemberGroup[] = [
+  '执事',
+  '亲传弟子',
+  '内门弟子',
+  '外门弟子',
+  '杂役弟子'
+]
+
+function isEncounterDiscipleGroup(group: MemberGroup, locationRealm: RealmMajor) {
+  if (DISCIPLE_GROUPS.includes(group)) return true
+  // 高危秘境偶可遇长老
+  if (group === '长老' && getRealmMajorIndex(locationRealm) >= getRealmMajorIndex('元婴')) {
+    return true
+  }
+  return false
+}
+
+function eventForMember(member: CatalogMember, kind: AdventureNpcKind) {
+  if (member.note) return member.note
+  if (kind === '宗门弟子') return `同门偶遇 · ${member.specialty || '叙旧切磋'}`
+  if (kind === '正道修士') return `正道同道 · ${member.specialty || '论道切磋'}`
+  if (kind === '魔道修士') return `魔修际会 · ${member.specialty || '杀机暗藏'}`
+  if (kind === '妖族') return `妖族化形 · ${member.specialty || '血脉感应'}`
+  return member.specialty || '偶遇'
+}
+
+/** 宗门人物 → 历练偶遇人物 */
+export function catalogMemberToAdventureNpc(
+  member: CatalogMember,
+  kind: AdventureNpcKind,
+  place = '各地'
+): AdventureNpc {
+  const sectName = getSectOption(member.sectId)?.name || ''
+  return {
+    id: member.id,
+    name: member.name,
+    title: member.title.includes(sectName) ? member.title : `${sectName}${member.title}`,
+    realm: parseMemberRealmMajor(member.realm),
+    personality: member.personality,
+    place,
+    event: eventForMember(member, kind),
+    avatar: member.avatar || member.name.slice(0, 1),
+    kind
+  }
+}
+
+function sectIdsOfFaction(faction: SectFaction, excludeSectId?: string | null): SectId[] {
+  return SECT_OPTIONS.filter(
+    (s) => s.faction === faction && (!excludeSectId || s.id !== excludeSectId)
+  ).map((s) => s.id)
+}
+
+function membersNearRealm(list: CatalogMember[], locationRealm: RealmMajor, maxDiff = 1) {
+  const idx = getRealmMajorIndex(locationRealm)
+  const near = list.filter((m) => {
+    const d = Math.abs(getRealmMajorIndex(parseMemberRealmMajor(m.realm)) - idx)
+    return d <= maxDiff
+  })
+  return near.length ? near : list
+}
+
+/**
+ * 按派系从「其他宗门」取人；若无其他同派宗门则回退该派全部（不含本宗弟子池时由调用方决定）。
+ */
+function factionMembersAsNpcs(
+  faction: SectFaction,
+  kind: AdventureNpcKind,
+  locationRealm: RealmMajor,
+  excludeSectId?: string | null,
+  place = '各地'
+): AdventureNpc[] {
+  let ids = sectIdsOfFaction(faction, excludeSectId)
+  if (!ids.length) ids = sectIdsOfFaction(faction, null)
+  const raw = ids
+    .flatMap((id) => getSectMembers(id))
+    .filter((m) => isEncounterDiscipleGroup(m.group, locationRealm))
+  return membersNearRealm(raw, locationRealm).map((m) =>
+    catalogMemberToAdventureNpc(m, kind, place)
+  )
+}
+
+/** 本宗弟子（偶遇「宗门弟子」） */
+function ownSectDisciplesAsNpcs(
+  playerSectId: string,
+  locationRealm: RealmMajor,
+  locationName: string
+): AdventureNpc[] {
+  const raw = getSectMembers(playerSectId).filter((m) =>
+    isEncounterDiscipleGroup(m.group, locationRealm)
+  )
+  return membersNearRealm(raw, locationRealm).map((m) =>
+    catalogMemberToAdventureNpc(m, '宗门弟子', locationName)
+  )
+}
+
+/**
+ * 坊市当日随机人物（随货架换日刷新）：
+ * 商人 / 散修取目录；正道 / 魔道优先取其他宗门对应派系人物
+ */
+export function rollMarketNpcs(
+  playerMajor: RealmMajor,
+  count = 3,
+  playerSectId: string | null | undefined = null
+): AdventureNpc[] {
+  const idx = getRealmMajorIndex(playerMajor)
+  const n = Math.max(2, Math.min(4, count))
+
+  const nearFilter = (item: AdventureNpc) => {
+    const d = Math.abs(getRealmMajorIndex(item.realm) - idx)
+    return d <= 1
+  }
+
+  const merchants = ADVENTURE_NPC_CATALOG.filter((item) => item.kind === '商人')
+  const loose = ADVENTURE_NPC_CATALOG.filter((item) => item.kind === '散修')
+  const demonicCatalog = ADVENTURE_NPC_CATALOG.filter((item) => item.kind === '魔道修士')
+
+  const righteousSect = factionMembersAsNpcs('正道', '正道修士', playerMajor, playerSectId)
+  const demonicSect = factionMembersAsNpcs('魔门', '魔道修士', playerMajor, playerSectId)
+
+  function poolFor(kind: MarketNpcKind): AdventureNpc[] {
+    let raw: AdventureNpc[]
+    if (kind === '商人') raw = merchants
+    else if (kind === '散修') raw = loose
+    else if (kind === '魔道修士') {
+      raw = demonicSect.length ? demonicSect : demonicCatalog
+    } else {
+      raw = righteousSect.length
+        ? righteousSect
+        : ADVENTURE_NPC_CATALOG.filter(
+            (item) => item.kind === '正道修士' || item.kind === '宗门弟子'
+          ).map((item) =>
+            item.kind === '宗门弟子' ? { ...item, kind: '正道修士' as const } : item
+          )
+    }
+    const near = raw.filter(nearFilter)
+    return near.length ? near : raw
+  }
+
+  const kinds = [...MARKET_NPC_KINDS]
+  for (let i = kinds.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[kinds[i], kinds[j]] = [kinds[j], kinds[i]]
+  }
+
+  const result: AdventureNpc[] = []
+  const used = new Set<string>()
+  for (const kind of kinds) {
+    if (result.length >= n) break
+    const available = poolFor(kind).filter((item) => !used.has(item.id))
+    const picked = pickOne(available)
+    if (!picked) continue
+    used.add(picked.id)
+    result.push(picked)
+  }
+
+  if (result.length < n) {
+    const filler = [
+      ...poolFor('商人'),
+      ...poolFor('正道修士'),
+      ...poolFor('魔道修士'),
+      ...poolFor('散修')
+    ].filter((item) => !used.has(item.id))
+    result.push(...pickUnique(filler, n - result.length))
+  }
+
+  return result.map(normalizeAdventureNpc)
+}
+
+/**
+ * 依当前历练地点随机偶遇人物：
+ * - 宗门弟子：本宗弟子
+ * - 正道 / 魔道 / 妖族：其他宗门对应派系人物
+ * - 另混入散修 / 商人 / 隐世 / 奇遇
+ */
+export function rollEncounterNpcs(
+  locationName: string,
+  locationRealm: RealmMajor,
+  count = 1,
+  playerSectId: string | null | undefined = null
+): AdventureNpc[] {
+  const catalogLoose = ADVENTURE_NPC_CATALOG.filter(
+    (item) =>
+      item.place === '各地' &&
+      (item.kind === '散修' || item.kind === '商人') &&
+      Math.abs(getRealmMajorIndex(item.realm) - getRealmMajorIndex(locationRealm)) <= 1
+  )
+  const special = ADVENTURE_NPC_CATALOG.filter(
+    (item) => item.kind === '隐世' || item.kind === '奇遇'
+  )
+
+  const pool: AdventureNpc[] = []
+
+  if (playerSectId) {
+    const own = ownSectDisciplesAsNpcs(playerSectId, locationRealm, locationName)
+    const righteous = factionMembersAsNpcs(
+      '正道',
+      '正道修士',
+      locationRealm,
+      playerSectId,
+      locationName
+    )
+    const demonic = factionMembersAsNpcs(
+      '魔门',
+      '魔道修士',
+      locationRealm,
+      playerSectId,
+      locationName
+    )
+    const beastFolk = factionMembersAsNpcs(
+      '妖族',
+      '妖族',
+      locationRealm,
+      playerSectId,
+      locationName
+    )
+
+    // 本宗加权最高
+    pool.push(...own, ...own, ...own)
+    pool.push(...righteous, ...righteous)
+    pool.push(...demonic, ...demonic)
+    pool.push(...beastFolk, ...beastFolk)
+
+    // 无其他同派宗门时，魔道 / 正道回退目录
+    if (!demonic.length) {
+      const mo = ADVENTURE_NPC_CATALOG.filter(
+        (item) =>
+          item.kind === '魔道修士' &&
+          Math.abs(getRealmMajorIndex(item.realm) - getRealmMajorIndex(locationRealm)) <= 1
+      )
+      pool.push(...mo, ...mo)
+    }
+  } else {
+    // 未入宗：沿用目录宗门弟子 + 魔道
+    const local = ADVENTURE_NPC_CATALOG.filter((item) => item.place === locationName)
+    const disciples = ADVENTURE_NPC_CATALOG.filter(
+      (item) => item.kind === '宗门弟子' && item.realm === locationRealm
+    )
+    const mo = ADVENTURE_NPC_CATALOG.filter(
+      (item) =>
+        item.kind === '魔道修士' &&
+        Math.abs(getRealmMajorIndex(item.realm) - getRealmMajorIndex(locationRealm)) <= 1
+    )
+    pool.push(...local, ...local, ...local)
+    pool.push(...disciples, ...disciples)
+    pool.push(...mo, ...mo)
+  }
+
+  pool.push(...catalogLoose, ...catalogLoose)
+  pool.push(...special)
+
+  if (!pool.length) {
+    return ADVENTURE_NPC_CATALOG.slice(0, Math.min(count, ADVENTURE_NPC_CATALOG.length)).map(
+      normalizeAdventureNpc
+    )
+  }
+
+  return pickUnique(pool, count).map(normalizeAdventureNpc)
+}
+
+/** 任务「清剿魔修」：优先其他宗门魔门人物 */
+export function pickDemonicEncounterNpc(
+  locationRealm: RealmMajor,
+  playerSectId: string | null | undefined = null
+): AdventureNpc | null {
+  const fromSect = factionMembersAsNpcs('魔门', '魔道修士', locationRealm, playerSectId)
+  if (fromSect.length) return pickOne(fromSect)
+  const catalog = ADVENTURE_NPC_CATALOG.filter((n) => n.kind === '魔道修士')
+  return pickOne(catalog)
 }

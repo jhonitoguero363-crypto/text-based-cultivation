@@ -20,6 +20,15 @@
             <view class="codex-cell__art">
               <OreIcon v-if="codex.tab === '矿石'" :name="item.name" size="lg" />
               <HerbIcon v-else-if="codex.tab === '药材'" :name="item.name" size="lg" />
+              <PillIcon v-else-if="codex.tab === '丹药'" :name="item.name" size="lg" />
+              <TreasureIcon
+                v-else-if="codex.tab === '法宝'"
+                :name="item.name"
+                :type="item.origin"
+                size="lg"
+              />
+              <TechniqueIcon v-else-if="codex.tab === '功法'" :name="item.name" size="lg" />
+              <PortraitAvatar v-else-if="codex.tab === '人物'" :name="item.name" size="lg" />
               <PetIcon
                 v-else-if="codex.tab === '灵兽' && item.icon !== 'beast'"
                 :name="item.name"
@@ -46,6 +55,15 @@
           <view class="codex-sheet__art">
             <OreIcon v-if="codex.tab === '矿石'" :name="active.name" size="lg" />
             <HerbIcon v-else-if="codex.tab === '药材'" :name="active.name" size="lg" />
+            <PillIcon v-else-if="codex.tab === '丹药'" :name="active.name" size="lg" />
+            <TreasureIcon
+              v-else-if="codex.tab === '法宝'"
+              :name="active.name"
+              :type="active.origin"
+              size="lg"
+            />
+            <TechniqueIcon v-else-if="codex.tab === '功法'" :name="active.name" size="lg" />
+            <PortraitAvatar v-else-if="codex.tab === '人物'" :name="active.name" size="lg" />
             <PetIcon
               v-else-if="codex.tab === '灵兽' && active.icon !== 'beast'"
               :name="active.name"
@@ -82,6 +100,10 @@ import BeastIcon from '../../components/BeastIcon.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
 import OreIcon from '../../components/OreIcon.vue'
 import PetIcon from '../../components/PetIcon.vue'
+import PillIcon from '../../components/PillIcon.vue'
+import PortraitAvatar from '../../components/PortraitAvatar.vue'
+import TreasureIcon from '../../components/TreasureIcon.vue'
+import TechniqueIcon from '../../components/TechniqueIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import SegmentTabs from '../../components/SegmentTabs.vue'
 import { CODEX_TABS, useCodexStore, type CodexEntry, type CodexTab } from '../../stores/codex'
@@ -94,9 +116,12 @@ const tabTone = computed(() => {
   const map: Record<CodexTab, string> = {
     灵兽: 'jade',
     法宝: 'gold',
+    功法: 'mp',
+    法术: 'hp',
     丹药: 'hp',
     药材: 'jade',
     矿石: 'mp',
+    材料: 'gold',
     人物: 'gold'
   }
   return map[codex.tab] || 'jade'
@@ -181,7 +206,7 @@ function closeDetail() {
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
-  background: radial-gradient(circle at 50% 35%, #24314a 0%, #121a2b 75%);
+  background: radial-gradient(circle at 50% 35%, var(--panel-2) 0%, var(--bg) 75%);
   border: 1px solid var(--border-soft);
 }
 
@@ -215,7 +240,7 @@ function closeDetail() {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(4, 8, 16, 0.72);
+  background: var(--overlay);
   display: flex;
   align-items: flex-end;
   justify-content: center;

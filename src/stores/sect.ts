@@ -5,14 +5,21 @@ import { getSectMembers, type CatalogMember } from '../constants/member-catalog'
 import { getGameDayKey } from '../constants/game-time'
 import {
   DAILY_MISSION_COUNT,
+  hydrateMissionFromCatalog,
+  isMissionObjectiveMet,
   rollOneMission,
-  type DailyMission
+  type DailyMission,
+  type MissionObjectiveKind
 } from '../constants/mission-catalog'
 import { getSectOption, type SectId } from '../constants/sects'
 import {
   formatSpellProficiencyLabel,
   getSpellProficiencyInfo
 } from '../constants/spell-proficiency'
+import {
+  formatTechniqueProficiencyLabel,
+  getTechniqueProficiencyInfo
+} from '../constants/technique-proficiency'
 import { SPELL_CATALOG } from '../constants/spell-catalog'
 import { TECHNIQUE_CATALOG } from '../constants/technique-catalog'
 
@@ -31,6 +38,15 @@ export interface SectTechnique {
   owned: boolean
   /** 当前正在修习（全局仅一门） */
   active: boolean
+  /** 熟练度点数；未拥有为 0 */
+  proficiency: number
+  proficiencyName: string
+  proficiencyEffect: string
+  proficiencyLabel: string
+  /** 当前阶进度，如 45/99；满阶为点数 */
+  proficiencyProgress: string
+  /** 战力加成（仅 active 时计入玩家战力） */
+  powerBonus: number
 }
 
 export interface SectSpell {
@@ -51,11 +67,14 @@ export interface SectSpell {
   proficiencyName: string
   proficiencyEffect: string
   proficiencyLabel: string
+  /** 当前阶进度，如 45/99；满阶为点数 */
+  proficiencyProgress: string
 }
 
 function buildTechniques(
   ownedNames: Set<string> = new Set(),
-  activeId: string | null = null
+  activeId: string | null = null,
+  proficiencyMap: Record<string, number> = {}
 ): SectTechnique[] {
   let resolvedActive: string | null = null
   if (activeId) {
@@ -65,21 +84,34 @@ function buildTechniques(
   if (!resolvedActive) {
     resolvedActive = TECHNIQUE_CATALOG.find((item) => ownedNames.has(item.name))?.id || null
   }
-  return TECHNIQUE_CATALOG.map((item) => ({
-    id: item.id,
-    name: item.name,
-    grade: item.grade,
-    gradeTier: item.gradeTier,
-    type: item.type,
-    school: item.school,
-    realmLabel: item.realmLabel,
-    realm: item.realm,
-    effect: item.effect,
-    origin: item.origin,
-    cost: item.cost,
-    owned: ownedNames.has(item.name),
-    active: item.id === resolvedActive
-  }))
+  return TECHNIQUE_CATALOG.map((item) => {
+    const owned = ownedNames.has(item.name)
+    const points = owned
+      ? Math.max(0, Math.round((proficiencyMap[item.name] ?? 0) * 10) / 10)
+      : 0
+    const info = getTechniqueProficiencyInfo(points)
+    return {
+      id: item.id,
+      name: item.name,
+      grade: item.grade,
+      gradeTier: item.gradeTier,
+      type: item.type,
+      school: item.school,
+      realmLabel: item.realmLabel,
+      realm: item.realm,
+      effect: item.effect,
+      origin: item.origin,
+      cost: item.cost,
+      owned,
+      active: item.id === resolvedActive,
+      proficiency: owned ? points : 0,
+      proficiencyName: owned ? info.name : '',
+      proficiencyEffect: owned ? info.effect : '',
+      proficiencyLabel: owned ? formatTechniqueProficiencyLabel(points) : '',
+      proficiencyProgress: owned ? info.progressText : '',
+      powerBonus: owned ? info.powerBonus : 0
+    }
+  })
 }
 
 function buildSpells(
@@ -107,7 +139,8 @@ function buildSpells(
       level: owned ? info.tier : 0,
       proficiencyName: owned ? info.name : '',
       proficiencyEffect: owned ? info.effect : '',
-      proficiencyLabel: owned ? formatSpellProficiencyLabel(points) : ''
+      proficiencyLabel: owned ? formatSpellProficiencyLabel(points) : '',
+      proficiencyProgress: owned ? info.progressText : ''
     }
   })
 }
@@ -136,6 +169,10 @@ export const useSectStore = defineStore('sect', () => {
   const tag = ref('')
   const desc = ref('尚未加入任何宗门')
   const base = ref('')
+  /** 势力等级：三流 / 二流 / 一流 / 圣地 */
+  const tier = ref('')
+  /** 派系：正道 / 魔门 / 妖族 */
+  const faction = ref('')
   const level = ref(1)
   const disciples = ref(0)
   const veinLevel = ref(1)
@@ -328,12 +365,14 @@ export const useSectStore = defineStore('sect', () => {
     }
   }
 
-  function normalizeMission(item: DailyMission): DailyMission {
-    return {
+  function normalizeMission(item: DailyMission): DailyMission | null {
+    return hydrateMissionFromCatalog({
       ...item,
       done: !!item.done,
-      accepted: !!item.accepted && !item.done
-    }
+      accepted: !!item.accepted && !item.done,
+      progress: Math.max(0, Number(item.progress) || 0),
+      meta: item.meta && typeof item.meta === 'object' ? { ...item.meta } : {}
+    })
   }
 
   function hydrateMissions() {
@@ -342,10 +381,10 @@ export const useSectStore = defineStore('sect', () => {
       if (data?.date && Array.isArray(data.missions)) {
         missionDate.value = data.date
         missionsCompletedToday.value = Number(data.completedToday) || 0
-        // 奇遇已迁出任务堂，过滤旧存档中的奇遇项
+        // 奇遇 / 已移除任务：用目录回填，无效则丢弃
         missions.value = data.missions
           .map((item: DailyMission) => normalizeMission(item))
-          .filter((item: DailyMission) => item.tag !== '奇遇')
+          .filter((item: DailyMission | null): item is DailyMission => !!item && item.tag !== '奇遇')
         // 兼容脏数据：同时只保留一个进行中任务
         const actives = missions.value.filter((item) => item.accepted && !item.done)
         if (actives.length > 1) {
@@ -363,6 +402,33 @@ export const useSectStore = defineStore('sect', () => {
     ensureDailyMissions()
   }
 
+  function assignEscortMembers(item: DailyMission) {
+    const pool = members.value.filter((m) => !m.self)
+    if (pool.length < 2) {
+      const only = pool[0]
+      item.meta = {
+        ...(item.meta || {}),
+        pickupMemberId: only?.id || '',
+        deliverMemberId: only?.id || '',
+        pickupMemberName: only?.name || '',
+        deliverMemberName: only?.name || '',
+        escortPhase: 'none'
+      }
+      return
+    }
+    const shuffled = [...pool].sort(() => Math.random() - 0.5)
+    const pickup = shuffled[0]
+    const deliver = shuffled[1]
+    item.meta = {
+      ...(item.meta || {}),
+      pickupMemberId: pickup.id,
+      deliverMemberId: deliver.id,
+      pickupMemberName: pickup.name,
+      deliverMemberName: deliver.name,
+      escortPhase: 'none'
+    }
+  }
+
   /** 领取任务（同时最多一个，无每日次数上限）；成功返回任务 */
   function acceptMission(instanceId: string) {
     ensureDailyMissions()
@@ -370,11 +436,23 @@ export const useSectStore = defineStore('sect', () => {
     const item = missions.value.find((mission) => mission.instanceId === instanceId)
     if (!item || item.done || item.accepted) return null
     item.accepted = true
+    item.progress = 0
+    item.meta = {}
+    const kind = item.objective?.kind
+    if (kind === 'escort_deliver' || kind === 'pill_deliver') {
+      assignEscortMembers(item)
+    }
+    if (kind === 'market_talk') {
+      item.meta = { ...(item.meta || {}), marketTargetName: '散修' }
+    }
+    if (kind === 'rescue_talk') {
+      item.meta = { ...(item.meta || {}), rescueName: '被困弟子' }
+    }
     persistMissions()
     return item
   }
 
-  /** 完成进行中任务；完成后补新任务上板，可继续领取 */
+  /** 完成进行中任务；需达成完成条件；完成后补新任务上板 */
   function completeMission(instanceId?: string) {
     ensureDailyMissions()
     const id = instanceId || activeMission.value?.instanceId
@@ -383,10 +461,10 @@ export const useSectStore = defineStore('sect', () => {
     if (index < 0) return null
     const item = missions.value[index]
     if (!item.accepted || item.done) return null
+    if (!isMissionObjectiveMet(item)) return null
 
     const finished = { ...item, done: true, accepted: false }
     missionsCompletedToday.value += 1
-    // 用新任务替换已完成位，不设每日领取上限
     const excludeIds = missions.value
       .filter((_, i) => i !== index)
       .map((mission) => mission.id)
@@ -403,6 +481,41 @@ export const useSectStore = defineStore('sect', () => {
     const item = missions.value.find((mission) => mission.instanceId === id)
     if (!item || !item.accepted || item.done) return false
     item.accepted = false
+    item.progress = 0
+    item.meta = {}
+    persistMissions()
+    return true
+  }
+
+  /**
+   * 上报任务进度。amount 默认 +1；若已达目标则封顶。
+   * 返回是否命中进行中任务。
+   */
+  function reportMissionProgress(
+    kind: MissionObjectiveKind,
+    amount = 1,
+    extra?: Record<string, string | number | boolean>
+  ) {
+    const item = activeMission.value
+    if (!item?.objective || item.objective.kind !== kind) return false
+    const target = Math.max(1, item.objective.target)
+    const next = Math.min(target, (item.progress || 0) + Math.max(0, amount))
+    item.progress = next
+    if (extra) item.meta = { ...(item.meta || {}), ...extra }
+    persistMissions()
+    return true
+  }
+
+  /** 设置护送阶段：none → holding → done */
+  function advanceEscortPhase(phase: 'holding' | 'done') {
+    const item = activeMission.value
+    if (!item?.objective) return false
+    if (item.objective.kind !== 'escort_deliver' && item.objective.kind !== 'pill_deliver') {
+      return false
+    }
+    item.meta = { ...(item.meta || {}), escortPhase: phase }
+    if (phase === 'holding') item.progress = Math.max(item.progress || 0, 1)
+    if (phase === 'done') item.progress = item.objective.target
     persistMissions()
     return true
   }
@@ -421,7 +534,8 @@ export const useSectStore = defineStore('sect', () => {
   function syncLearnedFromBag(
     bagItems: Array<{ name: string; category: string }>,
     preferredActiveId?: string | null,
-    proficiencyMap: Record<string, number> = {}
+    spellProficiencyMap: Record<string, number> = {},
+    techniqueProficiencyMap: Record<string, number> = {}
   ) {
     const techNames = new Set(
       bagItems.filter((item) => item.category === '功法').map((item) => item.name)
@@ -430,8 +544,38 @@ export const useSectStore = defineStore('sect', () => {
       bagItems.filter((item) => item.category === '法术').map((item) => item.name)
     )
     const currentActive = preferredActiveId || activeTechniqueId.value || null
-    techniques.value = buildTechniques(techNames, currentActive)
-    spells.value = buildSpells(spellNames, proficiencyMap)
+    techniques.value = buildTechniques(techNames, currentActive, techniqueProficiencyMap)
+    spells.value = buildSpells(spellNames, spellProficiencyMap)
+  }
+
+  function applyTechniqueProficiency(proficiencyMap: Record<string, number>) {
+    techniques.value = techniques.value.map((item) => {
+      if (!item.owned) {
+        return {
+          ...item,
+          proficiency: 0,
+          proficiencyName: '',
+          proficiencyEffect: '',
+          proficiencyLabel: '',
+          proficiencyProgress: '',
+          powerBonus: 0
+        }
+      }
+      const points = Math.max(
+        0,
+        Math.round((proficiencyMap[item.name] ?? item.proficiency ?? 0) * 10) / 10
+      )
+      const info = getTechniqueProficiencyInfo(points)
+      return {
+        ...item,
+        proficiency: points,
+        proficiencyName: info.name,
+        proficiencyEffect: info.effect,
+        proficiencyLabel: formatTechniqueProficiencyLabel(points),
+        proficiencyProgress: info.progressText,
+        powerBonus: info.powerBonus
+      }
+    })
   }
 
   function applySpellProficiency(proficiencyMap: Record<string, number>) {
@@ -443,7 +587,8 @@ export const useSectStore = defineStore('sect', () => {
           level: 0,
           proficiencyName: '',
           proficiencyEffect: '',
-          proficiencyLabel: ''
+          proficiencyLabel: '',
+          proficiencyProgress: ''
         }
       }
       const points = Math.max(
@@ -457,7 +602,8 @@ export const useSectStore = defineStore('sect', () => {
         level: info.tier,
         proficiencyName: info.name,
         proficiencyEffect: info.effect,
-        proficiencyLabel: formatSpellProficiencyLabel(points)
+        proficiencyLabel: formatSpellProficiencyLabel(points),
+        proficiencyProgress: info.progressText
       }
     })
   }
@@ -471,7 +617,16 @@ export const useSectStore = defineStore('sect', () => {
   function learnTechnique(id: string) {
     const item = techniques.value.find((tech) => tech.id === id)
     if (!item) return false
+    const info = getTechniqueProficiencyInfo(item.proficiency || 0)
     item.owned = true
+    if (!item.proficiencyName) {
+      item.proficiency = 0
+      item.proficiencyName = info.name
+      item.proficiencyEffect = info.effect
+      item.proficiencyLabel = formatTechniqueProficiencyLabel(0)
+      item.proficiencyProgress = info.progressText
+      item.powerBonus = info.powerBonus
+    }
     techniques.value.forEach((tech) => {
       tech.active = tech.id === id
     })
@@ -499,6 +654,7 @@ export const useSectStore = defineStore('sect', () => {
     item.proficiencyName = info.name
     item.proficiencyEffect = info.effect
     item.proficiencyLabel = formatSpellProficiencyLabel(0)
+    item.proficiencyProgress = info.progressText
     return true
   }
 
@@ -509,6 +665,8 @@ export const useSectStore = defineStore('sect', () => {
     tag.value = ''
     desc.value = '尚未加入任何宗门'
     base.value = ''
+    tier.value = ''
+    faction.value = ''
     level.value = 1
     disciples.value = 0
     veinLevel.value = 1
@@ -530,6 +688,8 @@ export const useSectStore = defineStore('sect', () => {
     tag.value = option.tag
     desc.value = option.desc
     base.value = option.base
+    tier.value = option.tier
+    faction.value = option.faction
     level.value = 1
     const catalog = getSectMembers(option.id)
     disciples.value = Math.max(128, catalog.length + 100)
@@ -552,6 +712,8 @@ export const useSectStore = defineStore('sect', () => {
     tag,
     desc,
     base,
+    tier,
+    faction,
     level,
     disciples,
     veinLevel,
@@ -580,6 +742,7 @@ export const useSectStore = defineStore('sect', () => {
     getSpellProficiency,
     applySpellProficiency,
     applySpellLevels,
+    applyTechniqueProficiency,
     learnTechnique,
     setActiveTechnique,
     learnSpell,
@@ -597,6 +760,8 @@ export const useSectStore = defineStore('sect', () => {
     completeMission,
     cancelMission,
     claimMission,
+    reportMissionProgress,
+    advanceEscortPhase,
     resetOwnedTechniques,
     clearJoinedSect,
     applyJoinedSect

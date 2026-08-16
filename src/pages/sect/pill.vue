@@ -1,7 +1,7 @@
 <template>
   <view class="page page--sub">
-    <PageHeader title="丹阁" subtitle="宗门 · 炼制丹药" show-back />
-    <SegmentTabs :model-value="mode" :items="['炼制丹药', '丹药买卖']" @update:model-value="mode = $event" />
+    <PageHeader title="丹阁" subtitle="宗门 · 丹药买卖与炼制" show-back />
+    <SegmentTabs :model-value="mode" :items="['丹药买卖', '炼制丹药']" @update:model-value="mode = $event" />
 
     <view class="content">
       <template v-if="mode === '炼制丹药'">
@@ -55,14 +55,15 @@
           <view v-if="!refineList.length" class="empty-tip">该境界暂无已知配方</view>
           <view v-for="item in refineList" :key="item.pill.id" class="shop-item">
             <view class="shop-item__head">
-              <view class="icon-box">🍵</view>
+              <PillIcon :name="item.pill.name" size="md" />
               <view class="row-item__body">
                 <view class="inline">
                   <text class="row-item__title">{{ item.pill.name }}</text>
-                  <text class="tag tag--jade">{{ item.recipe.grade }}</text>
+                  <text class="tag tag--jade">{{ item.pill.grade }}</text>
+                  <text class="tag tag--gold">{{ difficultyText(item.pill) }}</text>
                 </view>
                 <text class="row-item__desc">{{ item.pill.effect }}</text>
-                <text class="row-item__desc gold">{{ craftCostText(item.recipe) }}</text>
+                <text class="row-item__desc gold">{{ craftCostText(item) }}</text>
               </view>
               <view
                 class="btn"
@@ -117,11 +118,12 @@
           </view>
           <view v-for="item in shopList" :key="item.id" class="shop-item">
             <view class="shop-item__head">
-              <view class="icon-box">🍵</view>
+              <PillIcon :name="item.name" size="md" />
               <view class="row-item__body">
                 <view class="inline">
                   <text class="row-item__title">{{ item.name }}</text>
                   <text class="tag tag--jade">{{ item.grade }}</text>
+                  <text class="tag tag--gold">{{ difficultyText(item) }}</text>
                 </view>
                 <text class="row-item__desc">{{ item.type }}</text>
                 <text class="row-item__desc gold">{{ item.effect }}</text>
@@ -148,6 +150,7 @@
           </view>
           <view v-if="!bagPills.length" class="empty-tip">暂无可出售丹药</view>
           <view v-for="item in bagPills" :key="item.id" class="row-item">
+            <PillIcon :name="item.name" size="md" />
             <view class="row-item__body">
               <text class="row-item__title">{{ item.name }}</text>
               <text class="row-item__desc">持有 {{ item.count }} · 回收 40 灵石/个</text>
@@ -164,12 +167,14 @@
 import { computed, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import HerbIcon from '../../components/HerbIcon.vue'
+import PillIcon from '../../components/PillIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import SegmentTabs from '../../components/SegmentTabs.vue'
 import {
   calcSelfPillSuccessRate,
   CRAFT_MODE_FROM_LABEL,
   CRAFT_MODE_LABELS,
+  formatPillCraftDifficulty,
   formatSuccessRate,
   type CraftMode
 } from '../../constants/craft-mode'
@@ -183,7 +188,7 @@ import { useSectStore } from '../../stores/sect'
 
 const player = usePlayerStore()
 const sect = useSectStore()
-const mode = ref('炼制丹药')
+const mode = ref('丹药买卖')
 const craftModeLabel = ref<(typeof CRAFT_MODE_LABELS)[number]>('自己炼制')
 const craftModeLabels = CRAFT_MODE_LABELS
 const shopRealm = ref<RealmMajor>('炼气')
@@ -200,8 +205,8 @@ const pillSpellLabel = computed(() => {
 })
 const craftModeHint = computed(() =>
   craftMode.value === 'entrust'
-    ? '委托炼制：缴纳灵石，由丹阁长老代炼，必定成功。'
-    : `自己炼制：不耗灵石，成功率由炼丹术熟练度（${pillSpellLabel.value}）与丹药品阶决定；失败则药材尽毁。`
+    ? '委托炼制：只耗药材，由丹阁长老代炼，必定成功。'
+    : `自己炼制：只耗药材，成功率由炼丹术熟练度（${pillSpellLabel.value}）与丹药炼制难度决定；失败则药材尽毁。`
 )
 
 const shopList = computed(() => PILL_SHOP_CATALOG.filter((item) => item.realm === shopRealm.value))
@@ -226,23 +231,27 @@ function ownedCount(name: string) {
 }
 
 function ownedHerb(name: string) {
-  return player.getBagCount(name, '材料')
+  return player.getBagCount(name, '药材')
 }
 
 function spiritCost(recipe: PillRecipe) {
   return craftMode.value === 'entrust' ? recipe.spiritStones : 0
 }
 
-function successRate(recipe: PillRecipe) {
+function successRate(item: { pill: CatalogPill; recipe: PillRecipe }) {
   if (craftMode.value === 'entrust') return 1
-  return calcSelfPillSuccessRate(pillSpellLevel.value, recipe.grade)
+  return calcSelfPillSuccessRate(pillSpellLevel.value, item.pill.craftDifficulty)
 }
 
-function craftCostText(recipe: PillRecipe) {
+function difficultyText(pill: CatalogPill) {
+  return `难度 ${formatPillCraftDifficulty(pill.craftDifficulty, pill.grade)}`
+}
+
+function craftCostText(item: { pill: CatalogPill; recipe: PillRecipe }) {
   if (craftMode.value === 'entrust') {
-    return `委托费 ${recipe.spiritStones.toLocaleString()} 灵石 · 成功率 100%`
+    return '委托：只耗药材 · 成功率 100%'
   }
-  return `自炼无灵石 · 成功率 ${formatSuccessRate(successRate(recipe))}`
+  return `自炼：只耗药材 · 成功率 ${formatSuccessRate(successRate(item))}`
 }
 
 function canRefine(recipe: PillRecipe) {
@@ -268,13 +277,13 @@ function refine(item: { pill: CatalogPill; recipe: PillRecipe }) {
   }
   if (cost > 0 && !player.spendStones(cost)) return toast('灵石不足')
   for (const mat of recipe.materials) {
-    if (!player.removeBagItem(mat.name, '材料', mat.count)) {
+    if (!player.removeBagItem(mat.name, '药材', mat.count)) {
       if (cost > 0) player.earnStones(cost)
       return toast('药材不足')
     }
   }
 
-  const rate = successRate(recipe)
+  const rate = successRate(item)
   if (Math.random() > rate) {
     player.persist()
     return toast(`炼制失败，药材尽毁（成功率 ${formatSuccessRate(rate)}）`)

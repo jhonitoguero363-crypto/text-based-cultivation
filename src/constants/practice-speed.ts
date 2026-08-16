@@ -1,4 +1,5 @@
 import type { RootBone, RootName } from './roots'
+import { pickPrimaryRoot } from './roots'
 
 /** 悟性基准（此值倍率 = 1） */
 const COMPREHENSION_BASE = 50
@@ -7,11 +8,57 @@ const COMPREHENSION_PER_POINT = 0.01
 
 /** 根骨基准 */
 const ROOT_BASE = 50
-/** 对应根骨每偏离基准 1 点 → ±0.8% 功法修炼速度 */
+/** 对应根骨每偏离基准 1 点 → ±0.8% 功法/法术修习速度 */
 const ROOT_PER_POINT = 0.008
+
+/** 与主灵根相克：大幅降低 */
+export const ELEMENT_RESTRAIN_MULT = 0.38
+/** 非同属、非相克（含相生等异属）：小幅降低 */
+export const ELEMENT_OTHER_MULT = 0.82
+
+/** 五行核心 */
+export type WuxingCore = '金' | '木' | '水' | '火' | '土'
+
+/** 属性关系：同属 / 相克 / 异属 / 无属性 */
+export type ElementRelation = 'match' | 'restrain' | 'other' | 'none'
+
+/** 相生：木→火→土→金→水→木 */
+export const WUXING_GENERATE: Record<WuxingCore, WuxingCore> = {
+  木: '火',
+  火: '土',
+  土: '金',
+  金: '水',
+  水: '木'
+}
+
+/** 相克：木→土→水→火→金→木 */
+export const WUXING_RESTRAIN: Record<WuxingCore, WuxingCore> = {
+  木: '土',
+  土: '水',
+  水: '火',
+  火: '金',
+  金: '木'
+}
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
+}
+
+function randInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+/**
+ * 创建角色时随机悟性（与灵根独立）。
+ * 约：8% 20–34、20% 35–49、44% 50–69、20% 70–84、8% 85–99
+ */
+export function rollComprehension(): number {
+  const roll = Math.random()
+  if (roll < 0.08) return randInt(20, 34)
+  if (roll < 0.28) return randInt(35, 49)
+  if (roll < 0.72) return randInt(50, 69)
+  if (roll < 0.92) return randInt(70, 84)
+  return randInt(85, 99)
 }
 
 /** 悟性倍率：约 20→0.70、50→1.00、99→1.49 */
@@ -33,6 +80,45 @@ export function getRootValue(roots: RootBone[] | undefined, name: RootName) {
 }
 
 /**
+ * 风/冰/雷归入五行：风≈木、冰≈水、雷≈火。
+ * 用于判定相生相克；同属判定时精确名优先。
+ */
+export function toWuxingCore(name: RootName | string | null | undefined): WuxingCore | null {
+  if (!name) return null
+  if (name === '风') return '木'
+  if (name === '冰') return '水'
+  if (name === '雷') return '火'
+  if (name === '金' || name === '木' || name === '水' || name === '火' || name === '土') {
+    return name
+  }
+  return null
+}
+
+/** 主灵根与功法/法术属性的五行关系 */
+export function getElementRelation(
+  primaryRoot: RootName | null | undefined,
+  targetRoot: RootName | null | undefined
+): ElementRelation {
+  if (!targetRoot) return 'none'
+  if (!primaryRoot) return 'other'
+  if (primaryRoot === targetRoot) return 'match'
+
+  const a = toWuxingCore(primaryRoot)
+  const b = toWuxingCore(targetRoot)
+  if (!a || !b) return 'other'
+  if (a === b) return 'match'
+  if (WUXING_RESTRAIN[a] === b || WUXING_RESTRAIN[b] === a) return 'restrain'
+  return 'other'
+}
+
+export function formatRelationLabel(relation: ElementRelation) {
+  if (relation === 'match') return '同属'
+  if (relation === 'restrain') return '相克'
+  if (relation === 'other') return '异属'
+  return '无属性'
+}
+
+/**
  * 从功法类型 / 流派解析对应灵根属性。
  * 无对应五行者返回 null（仅受悟性影响）。
  */
@@ -42,7 +128,6 @@ export function resolveTechniqueRootAttr(
 ): RootName | null {
   const text = `${typeText || ''}${schoolText ? `/${schoolText}` : ''}`
 
-  // 明确五行 / 异属优先
   if (/木/.test(text)) return '木'
   if (/火|炎/.test(text)) return '火'
   if (/水/.test(text) && !/冰/.test(text)) return '水'
@@ -52,7 +137,6 @@ export function resolveTechniqueRootAttr(
   if (/风|疾风/.test(text)) return '风'
   if (/金|剑/.test(text)) return '金'
 
-  // 流派 / 类型近似映射
   if (/身法|空间/.test(text)) return '风'
   if (/炼体/.test(text)) return '土'
   if (/剑修|剑道/.test(text)) return '金'
@@ -60,8 +144,12 @@ export function resolveTechniqueRootAttr(
   if (/丹修|驭兽|世界/.test(text)) return '木'
   if (/魂修|魂道/.test(text)) return '冰'
 
-  // 修炼 / 混沌 / 天道 / 时间 / 阴阳 等：无单一对应属性
   return null
+}
+
+/** 从法术属性文案解析灵根 */
+export function resolveSpellRootAttr(attrText: string): RootName | null {
+  return resolveTechniqueRootAttr(attrText || '')
 }
 
 export function formatSpeedMult(mult: number) {
@@ -71,9 +159,11 @@ export function formatSpeedMult(mult: number) {
 export interface PracticeSpeedInput {
   comprehension: number
   roots?: RootBone[]
-  /** 功法类型（如火系、剑道）；法术演练不传 */
+  /** 功法类型（如火系、剑道） */
   techniqueType?: string
   techniqueSchool?: string
+  /** 法术属性（如火、冰） */
+  spellAttr?: string
   /** 洞府修炼加成百分比，如 5 → +5% */
   cultivateBonus?: number
   /** 聚气速度，如 1.1 */
@@ -84,9 +174,12 @@ export interface PracticeSpeedBreakdown {
   /** 最终综合倍率 */
   total: number
   comprehension: number
+  /** 灵根亲和倍率（同属看根骨；相克/异属为惩罚系数） */
   root: number
   rootName: RootName | null
   rootValue: number
+  primaryRoot: RootName | null
+  relation: ElementRelation
   cave: number
 }
 
@@ -97,28 +190,75 @@ function caveSpeedMult(cultivateBonus = 0, gatherSpeed = 1) {
   return gather * cultivate
 }
 
-/** 功法修炼：悟性 × 对应根骨 × 洞府 */
+/**
+ * 灵根亲和：
+ * - 同属（含风≈木、冰≈水、雷≈火）：灵根越好越快
+ * - 与主灵根相克：大幅降低
+ * - 其他异属（含相生）：小幅降低
+ * - 无属性：不乘灵根项
+ */
+export function calcElementAffinity(
+  roots: RootBone[] | undefined,
+  targetRoot: RootName | null
+): Pick<PracticeSpeedBreakdown, 'root' | 'rootName' | 'rootValue' | 'primaryRoot' | 'relation'> {
+  const primary = roots?.length ? pickPrimaryRoot(roots) : null
+  const primaryRoot = primary?.name || null
+  if (!targetRoot) {
+    return {
+      root: 1,
+      rootName: null,
+      rootValue: 0,
+      primaryRoot,
+      relation: 'none'
+    }
+  }
+
+  const rootValue = getRootValue(roots, targetRoot)
+  const relation = getElementRelation(primaryRoot, targetRoot)
+
+  if (relation === 'match') {
+    return {
+      root: rootSpeedMult(rootValue),
+      rootName: targetRoot,
+      rootValue,
+      primaryRoot,
+      relation
+    }
+  }
+  if (relation === 'restrain') {
+    return {
+      root: ELEMENT_RESTRAIN_MULT,
+      rootName: targetRoot,
+      rootValue,
+      primaryRoot,
+      relation
+    }
+  }
+  return {
+    root: ELEMENT_OTHER_MULT,
+    rootName: targetRoot,
+    rootValue,
+    primaryRoot,
+    relation
+  }
+}
+
+/** 功法修炼：悟性 × 灵根亲和 × 洞府 */
 export function calcTechniquePracticeSpeed(input: PracticeSpeedInput): PracticeSpeedBreakdown {
   const comprehension = comprehensionSpeedMult(input.comprehension)
   const rootName = resolveTechniqueRootAttr(input.techniqueType || '', input.techniqueSchool)
-  const rootValue = rootName ? getRootValue(input.roots, rootName) : ROOT_BASE
-  const root = rootName ? rootSpeedMult(rootValue) : 1
+  const affinity = calcElementAffinity(input.roots, rootName)
   const cave = caveSpeedMult(input.cultivateBonus, input.gatherSpeed)
-  const total = comprehension * root * cave
-  return { total, comprehension, root, rootName, rootValue, cave }
+  const total = comprehension * affinity.root * cave
+  return { total, comprehension, cave, ...affinity }
 }
 
-/** 法术演练：悟性 × 洞府（根骨不影响） */
+/** 法术演练：悟性 × 灵根亲和 × 洞府（与功法同一套五行规则） */
 export function calcSpellPracticeSpeed(input: PracticeSpeedInput): PracticeSpeedBreakdown {
   const comprehension = comprehensionSpeedMult(input.comprehension)
+  const rootName = resolveSpellRootAttr(input.spellAttr || '')
+  const affinity = calcElementAffinity(input.roots, rootName)
   const cave = caveSpeedMult(input.cultivateBonus, input.gatherSpeed)
-  const total = comprehension * cave
-  return {
-    total,
-    comprehension,
-    root: 1,
-    rootName: null,
-    rootValue: 0,
-    cave
-  }
+  const total = comprehension * affinity.root * cave
+  return { total, comprehension, cave, ...affinity }
 }

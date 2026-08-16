@@ -1,7 +1,7 @@
 <template>
   <view class="page page--sub">
-    <PageHeader title="器阁" subtitle="宗门 · 打造法宝" show-back />
-    <SegmentTabs :model-value="mode" :items="['打造法宝', '法宝买卖']" @update:model-value="mode = $event" />
+    <PageHeader title="器阁" subtitle="宗门 · 法宝买卖与打造" show-back />
+    <SegmentTabs :model-value="mode" :items="['法宝买卖', '打造法宝']" @update:model-value="mode = $event" />
 
     <view class="content">
       <template v-if="mode === '打造法宝'">
@@ -45,8 +45,22 @@
               @input="onNameInput"
             />
           </view>
+          <view class="field">
+            <text class="field__label">法宝类别</text>
+            <view class="mode-filter">
+              <view
+                v-for="cat in treasureCategories"
+                :key="cat"
+                class="realm-chip"
+                :class="{ 'realm-chip--active': forgeType === cat }"
+                @tap="forgeType = cat"
+              >
+                {{ cat }}
+              </view>
+            </view>
+          </view>
           <text class="hint">
-            投入矿石越多、品阶越高，成品强度越高；自己炼制失败则材料尽毁，委托失败不发生。
+            可投入矿石与历练材料；越多、品阶/境界越高，成品越强。自己炼制失败则投入尽毁，委托失败不发生。
           </text>
         </view>
 
@@ -55,13 +69,17 @@
             <text class="section-title__main">投入材料</text>
             <text class="section-title__sub">已选 {{ selectedCount }} 种</text>
           </view>
-          <view v-if="!bagOres.length" class="empty-tip">背包暂无矿石材料，可去矿洞挖掘</view>
-          <view v-for="item in bagOres" :key="item.name" class="mat-row">
-            <OreIcon :name="item.name" :level="item.level" size="md" />
+          <view v-if="!bagCraftMats.length" class="empty-tip">
+            背包暂无矿石或历练材料，可去矿洞挖掘或秘境击杀妖兽
+          </view>
+          <view v-for="item in bagCraftMats" :key="`${item.kind}-${item.name}`" class="mat-row">
+            <OreIcon v-if="item.kind === '矿石'" :name="item.name" :level="item.level" size="md" />
+            <view v-else class="mat-fallback">{{ item.name.slice(0, 1) }}</view>
             <view class="row-item__body">
               <text class="row-item__title">{{ item.name }}</text>
               <text class="row-item__desc">
-                {{ item.level || '材料' }} · 强度 {{ item.unitStrength }} · 持有 {{ item.owned }}
+                {{ item.kind }} · {{ item.level || item.originLabel || '历练' }} · 强度
+                {{ item.unitStrength }} · 持有 {{ item.owned }}
               </text>
             </view>
             <view class="qty">
@@ -76,6 +94,10 @@
           <view class="section-title">
             <text class="section-title__main">淬炼预估</text>
             <text class="section-title__sub">实际成品仍会随机浮动</text>
+          </view>
+          <view class="preview-row">
+            <text class="preview-label">法宝类别</text>
+            <text class="preview-val">{{ forgeType }}</text>
           </view>
           <view class="preview-row">
             <text class="preview-label">材料强度</text>
@@ -132,7 +154,7 @@
           </view>
           <view v-for="item in shopList" :key="item.id" class="shop-item">
             <view class="shop-item__head">
-              <view class="icon-box">⚒️</view>
+            <TreasureIcon :name="item.name" :grade="item.gradeLabel" :type="item.type" size="md" />
               <view class="row-item__body">
                 <text class="row-item__title">{{ item.name }}</text>
                 <text class="row-item__desc">{{ item.gradeLabel }} · {{ item.type }}</text>
@@ -160,6 +182,7 @@
           </view>
           <view v-if="!treasure.list.length" class="empty-tip">暂无可出售法宝</view>
           <view v-for="item in treasure.list" :key="item.id" class="row-item">
+            <TreasureIcon :name="item.name" :grade="item.gradeLabel || item.grade" :type="item.type" size="md" />
             <view class="row-item__body">
               <text class="row-item__title">{{ item.name }}</text>
               <text class="row-item__desc">{{ item.gradeLabel || item.grade }} · {{ item.type }}</text>
@@ -175,8 +198,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import Taro from '@tarojs/taro'
+import OreIcon from '../../components/OreIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import SegmentTabs from '../../components/SegmentTabs.vue'
+import TreasureIcon from '../../components/TreasureIcon.vue'
 import {
   CRAFT_MODE_FROM_LABEL,
   CRAFT_MODE_LABELS,
@@ -184,10 +209,12 @@ import {
 } from '../../constants/craft-mode'
 import {
   craftTreasureByMaterials,
+  getForgeBagKind,
   getMaterialStrength,
   getOreLevelByName,
   previewForge
 } from '../../constants/forge-craft'
+import { getLootMaterial } from '../../constants/loot-material-catalog'
 import { type RealmMajor } from '../../constants/realm'
 import { SPELL_FORGE_CRAFT_NAME } from '../../constants/spell-catalog'
 import {
@@ -195,8 +222,12 @@ import {
   FORGE_SHOP_REALMS,
   type CatalogTreasure
 } from '../../constants/treasure-catalog'
-import { getMaxTreasureGrade, getRealmMajorIndex } from '../../constants/treasure'
-import OreIcon from '../../components/OreIcon.vue'
+import {
+  TREASURE_CATEGORIES,
+  getMaxTreasureGrade,
+  getRealmMajorIndex,
+  type TreasureCategory
+} from '../../constants/treasure'
 import { usePlayerStore } from '../../stores/player'
 import { useSectStore } from '../../stores/sect'
 import { useTreasureStore } from '../../stores/treasure'
@@ -204,12 +235,14 @@ import { useTreasureStore } from '../../stores/treasure'
 const treasure = useTreasureStore()
 const player = usePlayerStore()
 const sect = useSectStore()
-const mode = ref('打造法宝')
+const mode = ref('法宝买卖')
 const craftModeLabel = ref<(typeof CRAFT_MODE_LABELS)[number]>('自己炼制')
 const craftModeLabels = CRAFT_MODE_LABELS
 const shopRealm = ref<RealmMajor>('炼气')
 const realmTabs = FORGE_SHOP_REALMS
 const forgeName = ref('')
+const forgeType = ref<TreasureCategory>('攻击类')
+const treasureCategories = TREASURE_CATEGORIES
 const selectedMap = reactive<Record<string, number>>({})
 
 const canCraftForge = computed(() => sect.hasOwnedSpell(SPELL_FORGE_CRAFT_NAME))
@@ -229,29 +262,40 @@ const craftModeHint = computed(() =>
 const maxGrade = computed(() => getMaxTreasureGrade(player.realmState))
 const shopList = computed(() => FORGE_SHOP_CATALOG.filter((item) => item.realm === shopRealm.value))
 
-const bagOres = computed(() =>
-  player.bag
-    .filter((item) => item.category === '材料' && item.count > 0)
+const bagCraftMats = computed(() => {
+  const list = player.bag
+    .filter((item) => (item.category === '矿石' || item.category === '材料') && item.count > 0)
     .map((item) => {
-      const level = getOreLevelByName(item.name)
+      const kind = item.category === '矿石' ? ('矿石' as const) : ('材料' as const)
+      const level = kind === '矿石' ? getOreLevelByName(item.name) : ''
+      const loot = kind === '材料' ? getLootMaterial(item.name) : null
       return {
         name: item.name,
         owned: item.count,
+        kind,
         level,
-        unitStrength: getMaterialStrength(item.name, level)
+        originLabel: loot?.origin || '',
+        unitStrength: getMaterialStrength(item.name, level || undefined)
       }
     })
-    .sort((a, b) => b.unitStrength - a.unitStrength || a.name.localeCompare(b.name, 'zh-CN'))
-)
+  return list.sort(
+    (a, b) => b.unitStrength - a.unitStrength || a.name.localeCompare(b.name, 'zh-CN')
+  )
+})
 
 const selectedMaterials = computed(() =>
   Object.entries(selectedMap)
     .filter(([, count]) => count > 0)
-    .map(([name, count]) => ({
-      name,
-      count,
-      level: getOreLevelByName(name)
-    }))
+    .map(([name, count]) => {
+      const kind = getForgeBagKind(name)
+      const level = kind === '矿石' ? getOreLevelByName(name) : ''
+      return {
+        name,
+        count,
+        level: level || undefined,
+        kind
+      }
+    })
 )
 
 const selectedCount = computed(() => selectedMaterials.value.length)
@@ -273,7 +317,9 @@ const canForge = computed(() => {
   if (name.length < 2 || name.length > 8) return false
   if (!selectedMaterials.value.length) return false
   if (player.spiritStones < preview.value.spiritCost) return false
-  return selectedMaterials.value.every((mat) => player.getBagCount(mat.name, '材料') >= mat.count)
+  return selectedMaterials.value.every(
+    (mat) => player.getBagCount(mat.name, mat.kind) >= mat.count
+  )
 })
 
 function onNameInput(e: { detail?: { value?: string } }) {
@@ -329,13 +375,13 @@ function onForge() {
   if (player.spiritStones < previewNow.spiritCost) return toast('灵石不足')
 
   for (const mat of selectedMaterials.value) {
-    if (player.getBagCount(mat.name, '材料') < mat.count) return toast(`${mat.name}不足`)
+    if (player.getBagCount(mat.name, mat.kind) < mat.count) return toast(`${mat.name}不足`)
   }
 
   const cost = previewNow.spiritCost
   if (cost > 0 && !player.spendStones(cost)) return toast('灵石不足')
   for (const mat of selectedMaterials.value) {
-    if (!player.removeBagItem(mat.name, '材料', mat.count)) {
+    if (!player.removeBagItem(mat.name, mat.kind, mat.count)) {
       if (cost > 0) player.earnStones(cost)
       return toast('材料不足')
     }
@@ -346,7 +392,8 @@ function onForge() {
     materials: selectedMaterials.value,
     realm: player.realmState,
     mode: craftMode.value,
-    spellLevel: forgeSpellLevel.value
+    spellLevel: forgeSpellLevel.value,
+    type: forgeType.value
   })
 
   if (!result.ok || !result.treasure) {
@@ -357,13 +404,14 @@ function onForge() {
 
   treasure.forgeTreasure(result.treasure)
   player.addBagItem(result.treasure.name, '法宝')
+  sect.reportMissionProgress('forge_success', 1)
   player.persist()
   clearSelection()
   forgeName.value = ''
   toast(
     craftMode.value === 'entrust'
-      ? `委托成功：${result.treasure.gradeLabel}·${result.treasure.name}`
-      : `自炼成功：${result.treasure.gradeLabel}·${result.treasure.name}`
+      ? `委托成功：${result.treasure.gradeLabel}·${result.treasure.type}·${result.treasure.name}`
+      : `自炼成功：${result.treasure.gradeLabel}·${result.treasure.type}·${result.treasure.name}`
   )
 }
 
@@ -438,6 +486,20 @@ function sell(id: string, name: string) {
   border-bottom: 1px solid rgba(46, 59, 89, 0.35);
 }
 .mat-row:last-child { border-bottom: none; }
+.mat-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--icon-well);
+  border: 1px solid var(--border-soft);
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 600;
+}
 .qty {
   display: flex;
   align-items: center;

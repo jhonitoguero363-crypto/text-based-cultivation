@@ -31,7 +31,7 @@ const src = computed(() => getHerbIconUrl(props.name, props.level))
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background-color: #0e1424;
+  background-color: var(--icon-well);
   background-repeat: no-repeat;
   background-position: center center;
   border: 1px solid var(--border-soft);

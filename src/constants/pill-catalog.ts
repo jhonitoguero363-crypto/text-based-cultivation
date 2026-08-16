@@ -10,6 +10,8 @@ export interface CatalogPill {
   story: string
   realm: RealmMajor
   price: number
+  /** 炼制难度 1～12，越高自炼成功率越低（可独立于品阶调整） */
+  craftDifficulty: number
 }
 
 /** 丹阁售卖丹药目录 */
@@ -24,7 +26,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '1小时内修炼速度+20%',
     story: '新手最常见的基础丹药',
     realm: '炼气',
-    price: 80
+    price: 80,
+    craftDifficulty: 1
   },
   {
     id: 'pill-huiling',
@@ -35,7 +38,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '战斗中可使用',
     story: '炼气期修士常备丹药',
     realm: '炼气',
-    price: 90
+    price: 90,
+    craftDifficulty: 1
   },
   {
     id: 'pill-ningxue',
@@ -46,7 +50,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '持续恢复5秒',
     story: '可用于野外探索',
     realm: '炼气',
-    price: 90
+    price: 90,
+    craftDifficulty: 1
   },
   {
     id: 'pill-xisui',
@@ -57,7 +62,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '小概率获得隐藏属性',
     story: '有概率触发特殊体质',
     realm: '炼气',
-    price: 220
+    price: 220,
+    craftDifficulty: 2
   },
   // 筑基
   {
@@ -69,7 +75,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '突破失败率降低',
     story: '筑基期最核心丹药',
     realm: '筑基',
-    price: 680
+    price: 680,
+    craftDifficulty: 3
   },
   {
     id: 'pill-yanghun',
@@ -80,7 +87,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '提高心魔抗性',
     story: '可降低突破时心魔出现概率',
     realm: '筑基',
-    price: 520
+    price: 520,
+    craftDifficulty: 3
   },
   {
     id: 'pill-ziling',
@@ -91,7 +99,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '持续12小时',
     story: '紫灵草炼制，较为稀有',
     realm: '筑基',
-    price: 560
+    price: 560,
+    craftDifficulty: 3
   },
   {
     id: 'pill-jingang',
@@ -102,7 +111,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '持续30分钟',
     story: '临时提升肉身强度',
     realm: '筑基',
-    price: 480
+    price: 480,
+    craftDifficulty: 3
   },
   // 金丹
   {
@@ -114,7 +124,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '金丹品质最低提升一档',
     story: '金丹修士争夺的珍贵资源',
     realm: '金丹',
-    price: 1800
+    price: 1800,
+    craftDifficulty: 4
   },
   {
     id: 'pill-chiyang',
@@ -125,7 +136,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '有概率领悟火属性神通',
     story: '火灵根修士效果翻倍',
     realm: '金丹',
-    price: 1500
+    price: 1500,
+    craftDifficulty: 4
   },
   {
     id: 'pill-taiyin',
@@ -136,7 +148,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '夜间效果增强',
     story: '与太阴类功法存在特殊联动',
     realm: '金丹',
-    price: 1600
+    price: 1600,
+    craftDifficulty: 4
   },
   {
     id: 'pill-jiuzhuanhuiyuan',
@@ -147,7 +160,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '清除部分负面状态',
     story: '战斗中的高级恢复丹',
     realm: '金丹',
-    price: 2400
+    price: 2400,
+    craftDifficulty: 5
   },
   // 元婴
   {
@@ -159,7 +173,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '降低突破失败惩罚',
     story: '元婴期核心突破资源',
     realm: '元婴',
-    price: 4200
+    price: 4200,
+    craftDifficulty: 5
   },
   {
     id: 'pill-jiuqiaoyangshen',
@@ -170,7 +185,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '提高幻术和精神攻击',
     story: '有概率开启特殊感知能力',
     realm: '元婴',
-    price: 3800
+    price: 3800,
+    craftDifficulty: 5
   },
   {
     id: 'pill-tianhun',
@@ -181,7 +197,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '死亡后有极低概率保留部分意识',
     story: '可触发特殊灵魂剧情',
     realm: '元婴',
-    price: 5600
+    price: 5600,
+    craftDifficulty: 6
   },
   {
     id: 'pill-wanling',
@@ -192,7 +209,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '短时间进入最佳状态',
     story: '多种灵兽材料炼制',
     realm: '元婴',
-    price: 5200
+    price: 5200,
+    craftDifficulty: 6
   },
   // 化神
   {
@@ -204,7 +222,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '突破时心魔伤害降低',
     story: '化神修士梦寐以求的丹药',
     realm: '化神',
-    price: 8800
+    price: 8800,
+    craftDifficulty: 6
   },
   {
     id: 'pill-tianyuan',
@@ -215,7 +234,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '持续24小时',
     story: '可大幅缩短闭关时间',
     realm: '化神',
-    price: 7600
+    price: 7600,
+    craftDifficulty: 6
   },
   {
     id: 'pill-niepan',
@@ -226,7 +246,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '每月仅可触发一次',
     story: '有概率觉醒特殊血脉',
     realm: '化神',
-    price: 12000
+    price: 12000,
+    craftDifficulty: 7
   },
   {
     id: 'pill-jiuzhuanxuan',
@@ -237,7 +258,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '清除大部分负面状态',
     story: '极其稀有',
     realm: '化神',
-    price: 14000
+    price: 14000,
+    craftDifficulty: 7
   },
   // 炼虚
   {
@@ -249,7 +271,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '可短暂感知空间裂隙',
     story: '有概率发现隐藏秘境',
     realm: '炼虚',
-    price: 16000
+    price: 16000,
+    craftDifficulty: 7
   },
   {
     id: 'pill-taixuwudao',
@@ -260,7 +283,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '持续3小时',
     story: 'AI 可根据玩家选择生成悟道事件',
     realm: '炼虚',
-    price: 17000
+    price: 17000,
+    craftDifficulty: 7
   },
   {
     id: 'pill-niming',
@@ -271,7 +295,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '使用后会产生因果债',
     story: '可能改变 NPC 对玩家的记忆',
     realm: '炼虚',
-    price: 22000
+    price: 22000,
+    craftDifficulty: 8
   },
   {
     id: 'pill-jiuzhuanlunhui',
@@ -282,7 +307,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '可选择转世方向',
     story: '可开启隐藏转生路线',
     realm: '炼虚',
-    price: 24000
+    price: 24000,
+    craftDifficulty: 8
   },
   // 合体
   {
@@ -294,7 +320,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '与本命功法产生特殊效果',
     story: '合体期核心资源',
     realm: '合体',
-    price: 32000
+    price: 32000,
+    craftDifficulty: 8
   },
   {
     id: 'pill-hunyuan',
@@ -305,7 +332,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '暂时免疫部分控制',
     story: '可作为顶级战斗丹',
     realm: '合体',
-    price: 30000
+    price: 30000,
+    craftDifficulty: 8
   },
   {
     id: 'pill-yinyangzaohua',
@@ -316,7 +344,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '修复严重伤势',
     story: '可改变部分角色体质',
     realm: '合体',
-    price: 42000
+    price: 42000,
+    craftDifficulty: 9
   },
   {
     id: 'pill-tianming',
@@ -327,7 +356,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '大幅提高机缘事件概率',
     story: '可能触发隐藏 NPC 和秘境',
     realm: '合体',
-    price: 45000
+    price: 45000,
+    craftDifficulty: 9
   },
   // 大乘
   {
@@ -339,7 +369,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '降低天道压制',
     story: '极少数顶级修士才能炼制',
     realm: '大乘',
-    price: 68000
+    price: 68000,
+    craftDifficulty: 9
   },
   {
     id: 'pill-wandao',
@@ -350,7 +381,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '有概率领悟稀有大道',
     story: '每颗丹药效果都可能不同',
     realm: '大乘',
-    price: 72000
+    price: 72000,
+    craftDifficulty: 9
   },
   {
     id: 'pill-zaohuashen',
@@ -361,7 +393,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '可修复部分道伤',
     story: '传说中可逆转濒死状态',
     realm: '大乘',
-    price: 88000
+    price: 88000,
+    craftDifficulty: 10
   },
   {
     id: 'pill-jiutianxuan',
@@ -372,7 +405,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '短时间进入“天人合一”状态',
     story: '使用时可能触发天道注视',
     realm: '大乘',
-    price: 96000
+    price: 96000,
+    craftDifficulty: 10
   },
   // 渡劫
   {
@@ -384,7 +418,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '雷劫伤害降低',
     story: '渡劫期最重要丹药之一',
     realm: '渡劫',
-    price: 110000
+    price: 110000,
+    craftDifficulty: 10
   },
   {
     id: 'pill-leiyuan',
@@ -395,7 +430,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '吸收部分天雷转化为自身灵力',
     story: '可强化九天雷印',
     realm: '渡劫',
-    price: 105000
+    price: 105000,
+    craftDifficulty: 10
   },
   {
     id: 'pill-jiusihuanhun',
@@ -406,7 +442,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '复活后境界暂时下降',
     story: '一生最多使用三次',
     realm: '渡劫',
-    price: 128000
+    price: 128000,
+    craftDifficulty: 10
   },
   {
     id: 'pill-toutian',
@@ -417,7 +454,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '降低天道锁定概率',
     story: '使用过多会增加天道敌意',
     realm: '渡劫',
-    price: 118000
+    price: 118000,
+    craftDifficulty: 10
   },
   // 飞升
   {
@@ -429,7 +467,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '降低飞升雷劫强度',
     story: '使用后开启仙界地图',
     realm: '飞升',
-    price: 180000
+    price: 180000,
+    craftDifficulty: 11
   },
   {
     id: 'pill-jiuzhuanxian',
@@ -440,7 +479,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '获得仙体',
     story: '飞升后可继续进阶',
     realm: '飞升',
-    price: 200000
+    price: 200000,
+    craftDifficulty: 11
   },
   {
     id: 'pill-hongmengwudao',
@@ -451,7 +491,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '有概率领悟鸿蒙级大道',
     story: '每颗丹药生成不同悟道结果',
     realm: '飞升',
-    price: 220000
+    price: 220000,
+    craftDifficulty: 11
   },
   {
     id: 'pill-taichushen',
@@ -462,7 +503,8 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '可创造一种低级世界规则',
     story: '仙界顶级丹药',
     realm: '飞升',
-    price: 250000
+    price: 250000,
+    craftDifficulty: 11
   },
   {
     id: 'pill-wujidao',
@@ -473,9 +515,23 @@ export const PILL_SHOP_CATALOG: CatalogPill[] = [
     special: '可创造全新修炼体系',
     story: '游戏终局级稀有道具',
     realm: '飞升',
-    price: 360000
+    price: 360000,
+    craftDifficulty: 12
   }
 ]
+
+export function getPillByName(name: string) {
+  return PILL_SHOP_CATALOG.find((item) => item.name === name) || null
+}
+
+/** 可治疗战斗受伤的丹药类型 / 名称 */
+const HEAL_INJURY_TYPES = new Set(['恢复', '复活', '重生', '造化'])
+
+export function canHealInjury(pillName: string) {
+  const pill = getPillByName(pillName)
+  if (pill && HEAL_INJURY_TYPES.has(pill.type)) return true
+  return /疗伤|凝血|回春|续命|回灵|回血|疗体/.test(pillName || '')
+}
 
 export const PILL_SHOP_REALMS: RealmMajor[] = [
   '炼气',

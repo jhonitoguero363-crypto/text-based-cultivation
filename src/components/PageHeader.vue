@@ -5,7 +5,14 @@
       <text class="page-header__calendar">{{ calendarLabel }}</text>
     </view>
     <view class="page-header__main">
-      <view v-if="showBack" class="page-header__back" @tap="onBack">‹</view>
+      <view
+        v-if="showBack"
+        class="page-header__back"
+        :class="{ 'page-header__back--locked': lockBack }"
+        @tap="onBack"
+      >
+        ‹
+      </view>
       <view class="page-header__texts">
         <text class="page-header__title">{{ title }}</text>
         <text v-if="subtitle" class="page-header__subtitle">{{ subtitle }}</text>
@@ -22,14 +29,19 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import Taro, { eventCenter, getCurrentInstance } from '@tarojs/taro'
 import { formatTianyuanCalendar } from '../constants/game-time'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title: string
     subtitle?: string
     showBack?: boolean
+    /** 为 true 时点击返回无效并提示 */
+    lockBack?: boolean
+    lockBackHint?: string
   }>(),
   {
-    showBack: false
+    showBack: false,
+    lockBack: false,
+    lockBackHint: '当前不可离开'
   }
 )
 
@@ -52,6 +64,10 @@ onUnmounted(() => {
 })
 
 function onBack() {
+  if (props.lockBack) {
+    Taro.showToast({ title: props.lockBackHint || '当前不可离开', icon: 'none' })
+    return
+  }
   const pages = Taro.getCurrentPages()
   if (pages.length > 1) {
     Taro.navigateBack()
@@ -67,8 +83,9 @@ function onBack() {
   top: 0;
   z-index: 200;
   background: var(--bg);
-  border-bottom: 1px solid rgba(46, 59, 89, 0.35);
-  box-shadow: 0 8px 20px rgba(7, 11, 20, 0.35);
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  margin-bottom: 8px;
 }
 
 .page-header__safe {
@@ -78,7 +95,7 @@ function onBack() {
 
 .page-header__calendar-bar {
   padding: 6px 16px 4px;
-  background: linear-gradient(180deg, rgba(91, 200, 168, 0.1), transparent);
+  background: linear-gradient(180deg, var(--accent-wash), transparent);
 }
 
 .page-header__calendar {
@@ -91,7 +108,7 @@ function onBack() {
 
 .page-header__main {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   padding: 4px 16px 10px;
 }
@@ -99,7 +116,7 @@ function onBack() {
 .page-header__back {
   width: 28px;
   height: 28px;
-  margin-top: 2px;
+  flex-shrink: 0;
   border-radius: 8px;
   background: var(--panel);
   border: 1px solid var(--border-soft);
@@ -110,6 +127,13 @@ function onBack() {
   color: var(--text-primary);
   font-size: 18px;
   line-height: 1;
+  /* ‹ 字形偏上，略下移以视觉居中 */
+  padding-bottom: 2px;
+  box-sizing: border-box;
+}
+
+.page-header__back--locked {
+  opacity: 0.45;
 }
 
 .page-header__texts {
@@ -135,6 +159,7 @@ function onBack() {
 
 .page-header__right {
   flex-shrink: 0;
-  margin-top: 2px;
+  display: flex;
+  align-items: center;
 }
 </style>

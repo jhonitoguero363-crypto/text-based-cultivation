@@ -1798,7 +1798,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "聚气丹",
     "grade": "一品",
-    "spiritStones": 50,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "聚灵草",
@@ -1821,7 +1821,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "回灵丹",
     "grade": "一品",
-    "spiritStones": 50,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "回灵草",
@@ -1840,7 +1840,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "养魂丹",
     "grade": "三品",
-    "spiritStones": 200,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "清心花",
@@ -1863,7 +1863,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "洗髓丹",
     "grade": "二品",
-    "spiritStones": 100,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "灵泉水",
@@ -1890,7 +1890,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "凝血丹",
     "grade": "一品",
-    "spiritStones": 50,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "凝血草",
@@ -1913,7 +1913,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "筑基丹",
     "grade": "三品",
-    "spiritStones": 200,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "筑基草",
@@ -1940,7 +1940,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "结金丹",
     "grade": "四品",
-    "spiritStones": 400,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "金灵果",
@@ -1971,7 +1971,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "九窍养神丹",
     "grade": "五品",
-    "spiritStones": 800,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "养魂草",
@@ -2002,7 +2002,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "太阴丹",
     "grade": "四品",
-    "spiritStones": 400,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "月魂花",
@@ -2033,7 +2033,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "紫灵丹",
     "grade": "三品",
-    "spiritStones": 200,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "紫灵草",
@@ -2056,7 +2056,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "金刚丹",
     "grade": "三品",
-    "spiritStones": 200,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "金刚藤",
@@ -2079,7 +2079,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "赤阳丹",
     "grade": "四品",
-    "spiritStones": 400,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "赤阳花",
@@ -2102,7 +2102,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "天魂丹",
     "grade": "六品",
-    "spiritStones": 1500,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "幽冥藤",
@@ -2137,7 +2137,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "九转回元丹",
     "grade": "五品",
-    "spiritStones": 800,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "九转灵芝",
@@ -2168,7 +2168,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "涅槃丹",
     "grade": "七品",
-    "spiritStones": 3000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "九转灵芝",
@@ -2199,7 +2199,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "婴灵丹",
     "grade": "五品",
-    "spiritStones": 800,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "婴灵草",
@@ -2222,7 +2222,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "九转轮回丹",
     "grade": "八品",
-    "spiritStones": 6000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "轮回藤",
@@ -2261,7 +2261,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "万灵丹",
     "grade": "六品",
-    "spiritStones": 1500,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "万灵花",
@@ -2292,7 +2292,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "天元丹",
     "grade": "六品",
-    "spiritStones": 1500,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "天灵芝",
@@ -2319,7 +2319,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "化神丹",
     "grade": "六品",
-    "spiritStones": 1500,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "化神草",
@@ -2350,7 +2350,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "太虚悟道丹",
     "grade": "七品",
-    "spiritStones": 3000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "悟道藤",
@@ -2385,7 +2385,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "九转玄丹",
     "grade": "七品",
-    "spiritStones": 3000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "九天灵芝",
@@ -2424,7 +2424,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "九转仙丹",
     "grade": "神丹",
-    "spiritStones": 50000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "不死草",
@@ -2435,7 +2435,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "混元丹",
     "grade": "八品",
-    "spiritStones": 6000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "阴阳花",
@@ -2458,7 +2458,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "虚空丹",
     "grade": "七品",
-    "spiritStones": 3000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "虚空草",
@@ -2485,7 +2485,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "偷天丹",
     "grade": "仙丹",
-    "spiritStones": 25000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "天机叶",
@@ -2496,7 +2496,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "逆命丹",
     "grade": "八品",
-    "spiritStones": 6000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "逆命花",
@@ -2523,7 +2523,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "天命丹",
     "grade": "九品",
-    "spiritStones": 12000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "天命果",
@@ -2558,7 +2558,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "合道丹",
     "grade": "八品",
-    "spiritStones": 6000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "合道花",
@@ -2589,7 +2589,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "阴阳造化丹",
     "grade": "九品",
-    "spiritStones": 12000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "阴阳神花",
@@ -2620,7 +2620,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "大乘丹",
     "grade": "九品",
-    "spiritStones": 12000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "大乘花",
@@ -2651,7 +2651,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "万道丹",
     "grade": "九品",
-    "spiritStones": 12000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "万道花",
@@ -2682,7 +2682,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "造化神丹",
     "grade": "仙丹",
-    "spiritStones": 25000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "造化神花",
@@ -2713,7 +2713,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "鸿蒙悟道丹",
     "grade": "神丹",
-    "spiritStones": 50000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "鸿蒙果",
@@ -2728,7 +2728,7 @@ export const PILL_RECIPES: PillRecipe[] = [
   {
     "pillName": "九天玄丹",
     "grade": "仙丹",
-    "spiritStones": 25000,
+    "spiritStones": 0,
     "materials": [
       {
         "name": "九天玄花",

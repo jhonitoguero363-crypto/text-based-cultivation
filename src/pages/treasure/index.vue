@@ -5,7 +5,11 @@
     <view class="content">
       <view class="panel">
         <view class="featured" v-if="treasure.active">
-          <view class="avatar avatar--lg">剑</view>
+          <TreasureIcon
+            :name="treasure.active.name"
+            :grade="treasure.active.gradeLabel || treasure.active.grade"
+            size="lg"
+          />
           <view class="featured__info">
             <text class="featured__name">{{ treasure.active.name }}</text>
             <text class="featured__meta">{{ treasure.active.gradeLabel || treasure.active.grade }} · {{ treasure.active.type }}</text>
@@ -44,21 +48,49 @@
           <text class="section-title__sub">拥有 {{ treasure.list.length }} 件</text>
         </view>
         <view v-if="!treasure.list.length" class="empty-tip">仓库空空如也</view>
-        <view v-for="item in treasure.list" :key="item.id" class="row-item" @tap="treasure.selectTreasure(item.id)">
-          <view class="icon-box">💎</view>
-          <view class="row-item__body">
-            <text class="row-item__title">{{ item.name }}</text>
-            <text class="row-item__desc">{{ item.gradeLabel || item.grade }} · {{ item.type }}</text>
-            <text class="row-item__desc">{{ item.desc }}</text>
-          </view>
+        <view class="vault-list">
           <view
-            v-if="!item.equipped"
-            class="btn btn--ghost"
-            @tap.stop="onEquip(item.id, item.grade)"
+            v-for="item in vaultList"
+            :key="item.id"
+            class="vault-card"
+            :class="{
+              'vault-card--active': treasure.activeId === item.id,
+              'vault-card--equipped': item.equipped
+            }"
+            @tap="treasure.selectTreasure(item.id)"
           >
-            装备
+            <view class="vault-card__icon-wrap">
+              <TreasureIcon :name="item.name" :grade="item.gradeLabel || item.grade" size="md" />
+              <text v-if="item.equipped" class="vault-card__dot" />
+            </view>
+            <view class="vault-card__body">
+              <view class="vault-card__head">
+                <text class="vault-card__name">{{ item.name }}</text>
+                <text
+                  class="vault-card__grade"
+                  :class="`tone-${gradeTone(item.grade)}`"
+                >
+                  {{ item.gradeLabel || item.grade }}
+                </text>
+              </view>
+              <view class="vault-card__meta">
+                <text class="vault-card__tag">{{ slotOf(item.type) }}</text>
+                <text class="vault-card__power">战力 +{{ powerOf(item) }}</text>
+                <text class="vault-card__lv">Lv.{{ item.level || 1 }}</text>
+              </view>
+              <text class="vault-card__desc">{{ item.special || item.desc }}</text>
+            </view>
+            <view class="vault-card__action">
+              <view
+                v-if="!item.equipped"
+                class="btn btn--ghost btn--mini"
+                @tap.stop="onEquip(item.id, item.grade)"
+              >
+                装备
+              </view>
+              <text v-else class="vault-card__equipped-label">已装备</text>
+            </view>
           </view>
-          <text v-else class="muted">已装备</text>
         </view>
       </view>
 
@@ -92,15 +124,21 @@
 import { computed } from 'vue'
 import Taro from '@tarojs/taro'
 import PageHeader from '../../components/PageHeader.vue'
+import TreasureIcon from '../../components/TreasureIcon.vue'
 import {
   TREASURE_GRADE_DEFS,
   canWieldTreasureGrade,
   getMaxTreasureGrade,
   getTreasureGradeDef,
+  getTreasureSlot,
   type TreasureGrade
 } from '../../constants/treasure'
 import { usePlayerStore } from '../../stores/player'
-import { getTreasurePowerBonus, useTreasureStore } from '../../stores/treasure'
+import {
+  getTreasurePowerBonus,
+  useTreasureStore,
+  type Treasure
+} from '../../stores/treasure'
 
 const treasure = useTreasureStore()
 const player = usePlayerStore()
@@ -111,9 +149,34 @@ const activePowerBonus = computed(() =>
   treasure.active ? getTreasurePowerBonus(treasure.active) : 0
 )
 
+const vaultList = computed(() => {
+  const gradeRank = (grade: string) => {
+    const idx = TREASURE_GRADE_DEFS.findIndex((item) => item.grade === grade)
+    return idx >= 0 ? idx : -1
+  }
+  return [...treasure.list].sort((a, b) => {
+    if (a.equipped !== b.equipped) return a.equipped ? -1 : 1
+    const gradeDiff = gradeRank(b.grade) - gradeRank(a.grade)
+    if (gradeDiff) return gradeDiff
+    return getTreasurePowerBonus(b) - getTreasurePowerBonus(a)
+  })
+})
+
 function gradeHint(grade: string) {
   const def = getTreasureGradeDef(grade)
   return def ? `${def.realmRange} · ${def.trait}` : ''
+}
+
+function gradeTone(grade: string) {
+  return getTreasureGradeDef(grade)?.tone || 'muted'
+}
+
+function slotOf(type: string) {
+  return getTreasureSlot(type)
+}
+
+function powerOf(item: Treasure) {
+  return getTreasurePowerBonus(item)
 }
 
 function hasSlot(slot: string) {
@@ -196,6 +259,136 @@ function toast(title: string) {
   color: var(--text-secondary);
   border: 1px solid var(--border-soft);
 }
+
+.vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vault-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(31, 43, 69, 0.95), rgba(24, 33, 54, 0.98));
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-panel);
+}
+
+.vault-card--active {
+  border-color: rgba(217, 179, 108, 0.55);
+  background: linear-gradient(160deg, rgba(217, 179, 108, 0.12), rgba(31, 43, 69, 0.96));
+}
+
+.vault-card--equipped {
+  box-shadow: inset 0 0 0 1px rgba(91, 200, 168, 0.18);
+}
+
+.vault-card__icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.vault-card__dot {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--jade);
+  border: 1.5px solid var(--panel);
+}
+
+.vault-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.vault-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.vault-card__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  font-family: var(--font-serif);
+}
+
+.vault-card__grade {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vault-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.vault-card__tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: rgba(46, 59, 89, 0.65);
+  border: 1px solid var(--border-soft);
+}
+
+.vault-card__power {
+  font-size: 11px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-card__lv {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-card__desc {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-card__action {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 48px;
+  text-align: center;
+}
+
+.vault-card__equipped-label {
+  font-size: 11px;
+  color: var(--jade);
+  font-weight: 600;
+}
+
+.btn--mini {
+  padding: 4px 10px;
+  font-size: 11px;
+  line-height: 1.3;
+  min-height: 0;
+}
+
 .grade-line {
   display: flex;
   gap: 10px;

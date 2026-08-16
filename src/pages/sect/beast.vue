@@ -1,7 +1,11 @@
 <template>
   <view class="page page--sub">
     <PageHeader title="灵兽阁" subtitle="宗门 · 只售灵宠 · 回收灵兽" show-back />
-    <SegmentTabs :model-value="mode" :items="['购买灵宠', '出售灵兽']" @update:model-value="mode = $event" />
+    <SegmentTabs
+      :model-value="mode"
+      :items="['购买灵宠', '出售灵兽', '喂养灵兽']"
+      @update:model-value="mode = $event"
+    />
 
     <view class="content">
       <template v-if="mode === '购买灵宠'">
@@ -10,7 +14,7 @@
             <text class="section-title__main">购买灵宠</text>
             <text class="section-title__sub">持有灵石 {{ player.spiritStones.toLocaleString() }}</text>
           </view>
-          <text class="hint-top">兽阁仅出售驯化灵宠；野妖需于秘境击败后抓捕。</text>
+          <text class="hint-top">兽阁仅出售驯化灵宠；野妖需于秘境击败后选择抓捕（仅一次）。</text>
           <view class="realm-filter">
             <view
               v-for="realm in realmTabs"
@@ -54,7 +58,7 @@
         </view>
       </template>
 
-      <template v-else>
+      <template v-else-if="mode === '出售灵兽'">
         <view class="panel">
           <view class="section-title">
             <text class="section-title__main">出售灵兽</text>
@@ -79,12 +83,46 @@
           </view>
         </view>
       </template>
+
+      <template v-else>
+        <view class="panel">
+          <view class="section-title">
+            <text class="section-title__main">喂养灵兽</text>
+            <text class="section-title__sub">每 5 秒可喂一次 · 提升好感</text>
+          </view>
+          <text class="hint-top">接取「饲养灵兽」任务后，在此喂养可累计进度。</text>
+          <view v-if="!player.pets.length" class="empty-tip">暂无灵兽可喂养</view>
+          <view v-for="item in player.pets" :key="item.id" class="row-item">
+            <PetIcon v-if="item.source !== 'capture'" :name="item.name" size="md" />
+            <BeastIcon v-else :name="item.name" size="md" />
+            <view class="row-item__body">
+              <text class="row-item__title">{{ item.name }}</text>
+              <text class="row-item__desc">好感 {{ item.favor }} · {{ item.status }}</text>
+            </view>
+            <view
+              class="btn"
+              :class="canFeed ? 'btn--jade' : 'btn--ghost'"
+              @tap="feed(item.id)"
+            >
+              {{ canFeed ? '喂养' : `${feedCd}s` }}
+            </view>
+          </view>
+          <view
+            v-if="turnInReady"
+            class="btn btn--gold btn--block"
+            style="margin-top: 12px"
+            @tap="turnInCapture"
+          >
+            上交抓捕妖兽（任务）
+          </view>
+        </view>
+      </template>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import BeastIcon from '../../components/BeastIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
@@ -99,13 +137,26 @@ import {
 } from '../../constants/pet-catalog'
 import { getRealmMajorIndex } from '../../constants/treasure'
 import { usePlayerStore, type Pet } from '../../stores/player'
+import { useSectStore } from '../../stores/sect'
 
 const player = usePlayerStore()
+const sect = useSectStore()
 const mode = ref('购买灵宠')
 const shopRealm = ref<RealmMajor>('炼气')
 const realmTabs = PET_SHOP_REALMS
+const feedCd = ref(0)
+let feedTimer: ReturnType<typeof setInterval> | null = null
 
 const shopList = computed(() => PET_SHOP_CATALOG.filter((item) => item.realm === shopRealm.value))
+const canFeed = computed(() => feedCd.value <= 0)
+const turnInReady = computed(() => {
+  const m = sect.activeMission
+  return (
+    m?.objective?.kind === 'capture_turn_in' &&
+    player.pets.some((p) => p.source === 'capture') &&
+    (m.progress || 0) < (m.objective.target || 1)
+  )
+})
 
 function canReach(item: CatalogPet) {
   return getRealmMajorIndex(player.realmState.major) >= getRealmMajorIndex(item.realm)
@@ -151,6 +202,43 @@ function sell(id: string) {
   player.persist()
   toast(`已出售${pet.name}，获得 ${refund} 灵石`)
 }
+
+function startFeedCd() {
+  feedCd.value = 5
+  if (feedTimer) clearInterval(feedTimer)
+  feedTimer = setInterval(() => {
+    feedCd.value = Math.max(0, feedCd.value - 1)
+    if (feedCd.value <= 0 && feedTimer) {
+      clearInterval(feedTimer)
+      feedTimer = null
+    }
+  }, 1000)
+}
+
+function feed(id: string) {
+  if (!canFeed.value) return toast(`冷却中 ${feedCd.value}s`)
+  const pet = player.pets.find((item) => item.id === id)
+  if (!pet) return
+  pet.favor = Math.min(100, pet.favor + 1)
+  sect.reportMissionProgress('feed_pet', 1)
+  player.persist()
+  startFeedCd()
+  toast(`已喂养${pet.name}，好感 +1`)
+}
+
+function turnInCapture() {
+  const pet = player.pets.find((item) => item.source === 'capture')
+  if (!pet) return toast('没有可上交的抓捕妖兽')
+  const name = pet.name
+  player.removePet(pet.id)
+  sect.reportMissionProgress('capture_turn_in', 1)
+  player.persist()
+  toast(`已上交${name}，任务进度更新`)
+}
+
+onBeforeUnmount(() => {
+  if (feedTimer) clearInterval(feedTimer)
+})
 </script>
 
 <style lang="scss">

@@ -112,6 +112,7 @@ function parseMinRealm(label: string): RealmMajor {
   const text = normalizeRealmLabel(label)
   const cleaned = text.replace(/后期|前期|中期|大圆满/g, '')
   for (const major of REALM_MAJORS) {
+    if (major === '无修为') continue
     if (cleaned.includes(major)) return major
   }
   return '炼气'
@@ -166,7 +167,7 @@ export const TECHNIQUE_CATALOG: CatalogTechnique[] = [
   tech('tech-3', '黄阶中品', '烈火诀', '火系', '法修', '练气', '火属性伤害 +8%', '炼丹峰'),
   tech('tech-4', '黄阶中品', '凝水诀', '水系', '法修', '练气', '水属性伤害 +8%', '寒潭洞'),
   tech('tech-5', '黄阶上品', '玄铁炼体诀', '炼体', '炼体', '练气', '防御 +10%', '器峰'),
-  tech('tech-6', '黄阶上品', '疾风步', '身法', '空间', '练气', '闪避 +8%', '宗门任务'),
+  tech('tech-6', '黄阶上品', '疾风决', '身法', '空间', '练气', '闪避 +8%', '宗门任务'),
   tech('tech-7', '黄阶上品', '青云心法', '修炼', '法修', '练气～筑基', '修炼速度 +12%', '青云宗传承'),
   tech('tech-8', '黄阶上品', '金刚诀', '炼体', '炼体', '练气～筑基', '防御 +15%', '金刚宗'),
 
@@ -249,6 +250,15 @@ export function getTechniqueGradeRank(grade: string) {
   if (grade.includes('上品')) return tierIdx * 3 + 2
   if (grade.includes('中品')) return tierIdx * 3 + 1
   return tierIdx * 3
+}
+
+/**
+ * 功法品阶 → 洞府修为获取倍率。
+ * 黄阶下品 ≈ 0.85，仙阶上品 ≈ 3.1；与境界吐纳基数叠乘，高阶功法才能跟上高阶突破需求。
+ */
+export function getTechniqueGradeExpMult(grade: string) {
+  const rank = getTechniqueGradeRank(grade)
+  return Math.round((0.85 + rank * 0.16) * 100) / 100
 }
 
 /**

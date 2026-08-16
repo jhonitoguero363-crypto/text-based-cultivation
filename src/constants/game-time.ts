@@ -102,6 +102,17 @@ export function getGameDayKey(now = Date.now()) {
   return `gday-${getGameDayIndex(now)}`
 }
 
+/** 用于存档比对的游戏月 key（天元年-月） */
+export function getGameMonthKey(now = Date.now()) {
+  const d = getTianyuanDate(now)
+  return `gmonth-${d.year}-${d.month}`
+}
+
+/** 是否天元历月初（初一） */
+export function isTianyuanMonthStart(now = Date.now()) {
+  return getTianyuanDate(now).day === 1
+}
+
 export function getYearGanzhi(yearIndexZeroBased: number) {
   const i = ((yearIndexZeroBased % 60) + 60) % 60
   return `${HEAVENLY_STEMS[i % 10]}${EARTHLY_BRANCHES[i % 12]}`
