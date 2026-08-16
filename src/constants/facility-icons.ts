@@ -61,6 +61,21 @@ export const FACILITY_ICON_SRC: Record<string, string> = {
     '<path d="M12 4.2L9.6 6.5h4.8L12 4.2z"/><rect x="8.6" y="6.5" width="6.8" height="2.8" rx="0.4"/><rect x="7.6" y="9.3" width="8.8" height="3" rx="0.4"/><rect x="6.6" y="12.3" width="10.8" height="3.2" rx="0.4"/><rect x="7.8" y="15.5" width="8.4" height="4.3" rx="0.4"/>',
     BLUE
   ),
+  // 魔窟：洞窟入口
+  demon_den: svgData(
+    '<path d="M5 18.5V11c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5v7.5"/><path d="M9 18.5v-4.2c0-1.5 1.3-2.8 3-2.8s3 1.3 3 2.8v4.2"/><path d="M5 18.5h14"/>',
+    CORAL
+  ),
+  // 剑冢：立剑丘
+  sword_tomb: svgData(
+    '<path d="M12 4.5v11"/><path d="M10 7.2h4"/><path d="M9.2 15.5h5.6L12 19.2 9.2 15.5z"/><path d="M6 19.5h12"/>',
+    BLUE
+  ),
+  // 返祖池：水池涟漪
+  ancestor_pool: svgData(
+    '<ellipse cx="12" cy="14.5" rx="7" ry="4"/><ellipse cx="12" cy="14.5" rx="4.2" ry="2.2"/><path d="M12 6.5v4.2"/><path d="M9.5 8.2c.8-.6 1.6-.9 2.5-.9s1.7.3 2.5.9"/>',
+    GOLD
+  ),
   // 灵兽阁：爪印，左右对称
   beast: svgData(
     '<ellipse cx="12" cy="15.4" rx="4" ry="3.2"/><circle cx="7" cy="9.4" r="1.55"/><circle cx="10.2" cy="7.5" r="1.55"/><circle cx="13.8" cy="7.5" r="1.55"/><circle cx="17" cy="9.4" r="1.55"/>',

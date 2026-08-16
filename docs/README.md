@@ -2,6 +2,8 @@
 
 文字修仙小游戏（Taro 4 + Vue3 + Pinia）的设定与图鉴整理，数据来源于当前工程 `src/constants`。
 
+> **维护约定**：凡新增或调整玩法 / 数值 / 规则，必须同步更新本目录对应文档；细则表写在文档中，不必堆在页面 UI。项目规则见 `.cursor/rules/docs-sync.mdc`。
+
 ## 文档索引
 
 | 文档 | 内容 |
@@ -33,14 +35,18 @@
 
 - 时间：`src/constants/game-time.ts`（6 小时 = 1 天元日；农历风格天元日历）
 - 境界：`src/constants/realm.ts`
+- 突破成功率：`src/constants/breakthrough.ts`（含主灵根修正）
 - 法宝：`src/constants/treasure.ts` / `treasure-catalog.ts`
 - 矿石：`src/constants/ore-catalog.ts`
 - 药材：`src/constants/herb-catalog.ts`
 - 历练材料：`src/constants/loot-material-catalog.ts`（妖兽 / 奇遇掉落）
 - 丹药：`src/constants/pill-catalog.ts` / `herb-catalog.ts`（配方）
 - 灵兽：`src/constants/beast-catalog.ts`（妖兽）+ `pet-catalog.ts`（兽阁灵宠）
-- 宗门：`src/constants/sects.ts` / `member-catalog.ts`
+- 宗门：`src/constants/sects.ts` / `sect-facilities.ts`（设施与特色建筑） / `member-catalog.ts` / `sect-stipend.ts` / `sect-rank.ts`（修为晋升） / `roots.ts`（入门身份）
 - 人物：`src/constants/member-catalog.ts` / `adventure-npc-catalog.ts`
+- 亲密 / 双修：`src/constants/intimacy.ts`
+- 切磋 / 受伤战力：`src/constants/spar.ts`
+- 生死比斗 / 思过崖：`src/constants/sect-duel.ts`
 - 功法：`src/constants/technique-catalog.ts`
 - 法术：`src/constants/spell-catalog.ts` / `spell-proficiency.ts`（熟练度六阶）
 - 修炼速度：`src/constants/practice-speed.ts`（悟性 / 五行灵根亲和）

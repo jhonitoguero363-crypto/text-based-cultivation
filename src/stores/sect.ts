@@ -6,11 +6,16 @@ import { getGameDayKey } from '../constants/game-time'
 import {
   DAILY_MISSION_COUNT,
   hydrateMissionFromCatalog,
+  isMissionAvailableForFacilities,
   isMissionObjectiveMet,
   rollOneMission,
   type DailyMission,
   type MissionObjectiveKind
 } from '../constants/mission-catalog'
+import {
+  getSectFacilities,
+  type SectFacility
+} from '../constants/sect-facilities'
 import { getSectOption, type SectId } from '../constants/sects'
 import {
   formatSpellProficiencyLabel,
@@ -148,13 +153,7 @@ function buildSpells(
 const MISSION_STORAGE_KEY = 'cultivation_daily_missions'
 
 
-export interface Facility {
-  key: string
-  name: string
-  desc: string
-  icon: string
-  path: string
-}
+export type Facility = SectFacility
 
 export type Mission = DailyMission
 
@@ -182,19 +181,8 @@ export const useSectStore = defineStore('sect', () => {
   const cultivateBonus = ref(0)
   const gatherSpeed = ref(1)
 
-  const facilities = ref<Facility[]>([
-    { key: 'pill', name: '丹阁', desc: '炼制金丹', icon: '🍵', path: '/pages/sect/pill' },
-    { key: 'forge', name: '器阁', desc: '神兵锻造', icon: '⚒️', path: '/pages/sect/forge' },
-    { key: 'tech', name: '功法阁', desc: '秘籍研习', icon: '📜', path: '/pages/sect/technique' },
-    { key: 'cave', name: '洞府', desc: '闭关吐纳', icon: '🏡', path: '/pages/sect/cave' },
-    { key: 'mission', name: '任务堂', desc: '宗门贡献', icon: '⚔️', path: '/pages/sect/mission' },
-    { key: 'members', name: '人物', desc: '同门名录', icon: '👤', path: '/pages/sect/members' },
-    { key: 'mine', name: '矿洞', desc: '挖矿取石', icon: '⛏️', path: '/pages/sect/mine' },
-    { key: 'garden', name: '药园', desc: '培育灵草', icon: '🌿', path: '/pages/sect/garden' },
-    { key: 'cliff', name: '思过崖', desc: '面壁受罚', icon: '⛰️', path: '/pages/sect/cliff' },
-    { key: 'tower', name: '镇妖塔', desc: '镇压妖兽', icon: '🏯', path: '/pages/sect/tower' },
-    { key: 'beast', name: '灵兽阁', desc: '售灵宠·收灵兽', icon: '🐉', path: '/pages/sect/beast' }
-  ])
+  const facilities = computed(() => getSectFacilities(sectId.value || null))
+  const facilityKeys = computed(() => facilities.value.map((item) => item.key))
 
   const missions = ref<DailyMission[]>([])
   const missionDate = ref('')
@@ -354,12 +342,17 @@ export const useSectStore = defineStore('sect', () => {
     persistMissions()
   }
 
-  /** 去掉已完成；保留未完成；空位补新任务 */
+  /** 去掉已完成与当前宗门不具备设施的任务；保留未完成；空位补新 */
   function refillMissionBoard() {
-    missions.value = missions.value.filter((item) => !item.done)
+    // 宗门尚未写入（存档 hydrate 早于 applyJoinedSect）时不做设施门禁，避免误删存档任务
+    const keys = sectId.value ? facilityKeys.value : null
+    missions.value = missions.value.filter((item) => {
+      if (item.done) return false
+      return isMissionAvailableForFacilities(item, keys)
+    })
     const excludeIds = missions.value.map((item) => item.id)
     while (missions.value.length < DAILY_MISSION_COUNT) {
-      const next = rollOneMission(excludeIds)
+      const next = rollOneMission(excludeIds, keys)
       excludeIds.push(next.id)
       missions.value.push(next)
     }
@@ -468,7 +461,7 @@ export const useSectStore = defineStore('sect', () => {
     const excludeIds = missions.value
       .filter((_, i) => i !== index)
       .map((mission) => mission.id)
-    missions.value[index] = rollOneMission(excludeIds)
+    missions.value[index] = rollOneMission(excludeIds, sectId.value ? facilityKeys.value : null)
     persistMissions()
     return finished
   }
@@ -701,6 +694,7 @@ export const useSectStore = defineStore('sect', () => {
     gatherSpeed.value = 1.1
     members.value = catalog.map((item) => ({ ...item }))
     visitTargetId.value = members.value[0]?.id || ''
+    ensureDailyMissions()
   }
 
   hydrateMissions()

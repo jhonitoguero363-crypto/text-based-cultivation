@@ -82,6 +82,30 @@ export function formatPrimaryRoot(root: RootBone): string {
   return `${root.name}（${root.grade}）`
 }
 
+/** 入宗可授身份（杂役～内门），依主灵根与宗门等级 */
+export type JoinSectRank = '杂役弟子' | '外门弟子' | '内门弟子'
+
+/**
+ * 拜入宗门初始身份。
+ * - 根骨越高 → 职位越高（主灵根：≥75 内门档、≥55 外门档）
+ * - 宗门等级越高 → 入门门槛越高、职位越低（相对三流，每高一级阈值 +8）
+ *   三流 shift0 · 二流 +8 · 一流 +16 · 圣地 +24
+ */
+export function resolveJoinRankFromRoots(
+  roots: RootBone[],
+  sectTierRank = 1
+): JoinSectRank {
+  if (!roots.length) return '杂役弟子'
+  const primary = pickPrimaryRoot(roots)
+  const value = Math.max(0, Number(primary?.value) || 0)
+  const shift = Math.max(0, (Number(sectTierRank) || 1) - 1)
+  const innerNeed = 75 + shift * 8
+  const outerNeed = 55 + shift * 8
+  if (value >= innerNeed) return '内门弟子'
+  if (value >= outerNeed) return '外门弟子'
+  return '杂役弟子'
+}
+
 /**
  * 界面展示用灵根列表。
  * 金木水火土始终显示；风/冰/雷仅当其数值等于全灵根最高值时显示。

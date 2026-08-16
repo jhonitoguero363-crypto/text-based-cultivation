@@ -6,7 +6,13 @@ import {
   type RealmState
 } from './realm'
 import { getRealmProgressIndex } from './realm-exp'
+import { pickPrimaryRoot, type RootBone } from './roots'
 import { getTechniqueGradeRank } from './technique-catalog'
+
+/** 主灵根基准值（此值对突破成功率修正为 0） */
+export const BREAKTHROUGH_ROOT_BASE = 50
+/** 主灵根每偏离基准 1 点 → ±0.4 百分点成功率 */
+export const BREAKTHROUGH_ROOT_PER_POINT = 0.4
 
 export interface BreakthroughRateDetail {
   /** 最终成功率 0～100（整数展示用） */
@@ -14,7 +20,10 @@ export interface BreakthroughRateDetail {
   isMajor: boolean
   base: number
   gradeBonus: number
+  rootBonus: number
   pillBonus: number
+  /** 参与计算的主灵根数值；无灵根为 null */
+  primaryRootValue: number | null
   /** 对应突破丹名称；炼气等无丹则为 null */
   pillName: string | null
   /** 是否已持有并会计入加成 */
@@ -58,6 +67,16 @@ export function calcTechniqueBreakthroughBonus(grade: string | null | undefined)
 }
 
 /**
+ * 主灵根对突破成功率的修正（百分点）。
+ * 相对基准 50：约 0→−20、50→0、100→+20。
+ */
+export function calcRootBreakthroughBonus(roots: RootBone[] | null | undefined) {
+  if (!roots?.length) return 0
+  const primary = pickPrimaryRoot(roots)
+  return Math.round((primary.value - BREAKTHROUGH_ROOT_BASE) * BREAKTHROUGH_ROOT_PER_POINT)
+}
+
+/**
  * 基础成功率：大境界约 10%～50%（越高越低），小境界约 80%+。
  */
 export function calcBreakthroughBaseRate(current: RealmState, next: RealmState) {
@@ -87,6 +106,7 @@ export function calcBreakthroughSuccessRate(input: {
   current: RealmState
   next?: RealmState | null
   techniqueGrade?: string | null
+  roots?: RootBone[] | null
   hasPill?: boolean
   formatRealm: (state: RealmState) => string
 }): BreakthroughRateDetail | null {
@@ -99,15 +119,19 @@ export function calcBreakthroughSuccessRate(input: {
   const hasPill = !!(pillName && input.hasPill)
   const base = calcBreakthroughBaseRate(input.current, next)
   const gradeBonus = calcTechniqueBreakthroughBonus(input.techniqueGrade)
+  const rootBonus = calcRootBreakthroughBonus(input.roots)
+  const primaryRootValue = input.roots?.length ? pickPrimaryRoot(input.roots).value : null
   const pillBonus = hasPill ? getBreakthroughPillBonus(isMajor, pillName) : 0
-  const rate = clampRate(base + gradeBonus + pillBonus)
+  const rate = clampRate(base + gradeBonus + rootBonus + pillBonus)
 
   return {
     rate,
     isMajor,
     base,
     gradeBonus,
+    rootBonus,
     pillBonus,
+    primaryRootValue,
     pillName,
     hasPill,
     fromLabel: input.formatRealm(input.current),

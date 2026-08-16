@@ -19,6 +19,9 @@ export default {
     'pages/sect/garden',
     'pages/sect/cliff',
     'pages/sect/tower',
+    'pages/sect/demon-den',
+    'pages/sect/sword-tomb',
+    'pages/sect/ancestor-pool',
     'pages/sect/beast'
   ],
   window: {

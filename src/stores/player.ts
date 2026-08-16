@@ -21,9 +21,12 @@ import { getExpRequiredToBreakthrough } from '../constants/realm-exp'
 import {
   formatPrimaryRoot,
   pickPrimaryRoot,
+  resolveJoinRankFromRoots,
   rollRootBones,
   type RootBone
 } from '../constants/roots'
+import { getSectOption, getSectTierRank, type SectId } from '../constants/sects'
+import { resolvePromotedSectRank } from '../constants/sect-rank'
 import { rollComprehension } from '../constants/practice-speed'
 import { INJURY_POWER_MULT } from '../constants/spar'
 import {
@@ -64,12 +67,18 @@ import {
   resolveSectStipendGroup
 } from '../constants/sect-stipend'
 import { applyUiTheme, applyUiThemeForSect } from '../constants/ui-theme'
-import type { SectId } from '../constants/sects'
 import { useSectStore } from './sect'
 import { useTreasureStore } from './treasure'
 
 export type BreakthroughAttemptResult =
-  | { ok: true; realm: string; rate: number; usedPill: string | null }
+  | {
+      ok: true
+      realm: string
+      rate: number
+      usedPill: string | null
+      /** 突破成功后若晋升宗门身份 */
+      rankPromotion?: { from: string; to: string } | null
+    }
   | { ok: false; rate: number; usedPill: string | null; expAfter: number }
 
 const STORAGE_KEY = 'cultivation_player_profile'
@@ -500,6 +509,7 @@ export const usePlayerStore = defineStore('player', () => {
       current: realmState.value,
       next: nextRealmState.value,
       techniqueGrade: resolveActiveTechniqueGrade(),
+      roots: roots.value,
       hasPill: false,
       formatRealm: formatRealmState
     })
@@ -511,6 +521,7 @@ export const usePlayerStore = defineStore('player', () => {
         current: realmState.value,
         next: nextRealmState.value,
         techniqueGrade: resolveActiveTechniqueGrade(),
+        roots: roots.value,
         hasPill: true,
         formatRealm: formatRealmState
       }) || detail
@@ -546,12 +557,14 @@ export const usePlayerStore = defineStore('player', () => {
       syncExpMaxFromRealm()
       exp.value = 0
       addPower(30 + majorIdx * 25)
+      const rankPromotion = applySectRankPromotion()
       persist()
       return {
         ok: true,
         realm: formatRealmState(realmState.value),
         rate: preview.rate,
-        usedPill
+        usedPill,
+        rankPromotion
       }
     }
 
@@ -559,6 +572,21 @@ export const usePlayerStore = defineStore('player', () => {
     if (exp.value > expMax.value) exp.value = expMax.value
     persist()
     return { ok: false, rate: preview.rate, usedPill, expAfter: exp.value }
+  }
+
+  /**
+   * 依当前境界与宗门等级尝试晋升身份（仅升不降，最高亲传）
+   */
+  function applySectRankPromotion() {
+    if (!sect.value && !sectId.value) return null
+    const result = resolvePromotedSectRank({
+      currentRank: rank.value,
+      realm: realmState.value,
+      sectId: sectId.value
+    })
+    if (!result.promoted) return null
+    rank.value = result.to
+    return { from: result.from, to: result.to }
   }
 
   function spendStones(amount: number) {
@@ -1102,7 +1130,11 @@ export const usePlayerStore = defineStore('player', () => {
     if (sect.value) return false
     sectId.value = id
     sect.value = sectName
-    rank.value = '外门弟子'
+    const joinRank = resolveJoinRankFromRoots(
+      roots.value,
+      getSectTierRank(getSectOption(id)?.tier)
+    )
+    rank.value = joinRank
     const sectStore = useSectStore()
     sectStore.applyJoinedSect(id)
 
@@ -1130,6 +1162,7 @@ export const usePlayerStore = defineStore('player', () => {
     persist()
     return {
       ok: true as const,
+      rank: joinRank,
       techniqueName: technique?.name || '',
       spellName: spell?.name || '',
       stipendAmount: stipend?.amount || 0,
@@ -1251,6 +1284,7 @@ export const usePlayerStore = defineStore('player', () => {
     setRealm,
     getBreakthroughPreview,
     breakthrough,
+    applySectRankPromotion,
     rootBone,
     comprehension,
     power,

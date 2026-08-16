@@ -47,6 +47,8 @@ export interface CatalogMission {
   drops?: string
   /** 完成条件；奇遇可无 */
   objective?: MissionObjective
+  /** 任务堂出现所需宗门设施 key（如 tower）；无则不限制 */
+  requiresFacility?: string
 }
 
 export interface DailyMission extends CatalogMission {
@@ -227,7 +229,8 @@ export const MISSION_CATALOG: CatalogMission[] = [
     desc: '挑战宗门妖塔并达到指定层数',
     reward: '贡献 +100 · 修为 +10',
     action: '前往',
-    objective: obj('tower_guard', 60, '镇妖塔镇守指定层数持续 60 秒')
+    objective: obj('tower_guard', 60, '镇妖塔镇守指定层数持续 60 秒'),
+    requiresFacility: 'tower'
   },
   // —— 奇遇（不进任务堂）——
   {
@@ -373,19 +376,46 @@ function withMissionDefaults(item: CatalogMission, instanceId: string): DailyMis
   }
 }
 
+/** 任务是否满足设施前置（无 requiresFacility 则始终可用；未传入 facilityKeys 时不做门禁） */
+export function isMissionAvailableForFacilities(
+  mission: Pick<CatalogMission, 'requiresFacility'>,
+  facilityKeys?: Iterable<string> | null
+) {
+  if (!mission.requiresFacility) return true
+  if (facilityKeys == null) return true
+  return new Set(facilityKeys).has(mission.requiresFacility)
+}
+
+function sectMissionPool(facilityKeys?: Iterable<string> | null) {
+  return SECT_MISSION_CATALOG.filter((item) =>
+    isMissionAvailableForFacilities(item, facilityKeys)
+  )
+}
+
 /** 从宗门任务库随机抽取（不含奇遇） */
-export function rollDailyMissions(count = DAILY_MISSION_COUNT): DailyMission[] {
-  const pool = SECT_MISSION_CATALOG
-  const picked = shuffle(pool).slice(0, Math.min(count, pool.length))
+export function rollDailyMissions(
+  count = DAILY_MISSION_COUNT,
+  facilityKeys?: Iterable<string> | null
+): DailyMission[] {
+  const pool = sectMissionPool(facilityKeys)
+  const source = pool.length ? pool : SECT_MISSION_CATALOG.filter((item) => !item.requiresFacility)
+  const picked = shuffle(source).slice(0, Math.min(count, source.length))
   const stamp = Date.now()
   return picked.map((item, index) => withMissionDefaults(item, `${item.id}-${stamp}-${index}`))
 }
 
 /** 补一条新的可领取任务（可排除当前板上已有模板 id） */
-export function rollOneMission(excludeCatalogIds: string[] = []): DailyMission {
+export function rollOneMission(
+  excludeCatalogIds: string[] = [],
+  facilityKeys?: Iterable<string> | null
+): DailyMission {
   const exclude = new Set(excludeCatalogIds)
-  const pool = SECT_MISSION_CATALOG.filter((item) => !exclude.has(item.id))
-  const source = pool.length ? pool : SECT_MISSION_CATALOG
+  const available = sectMissionPool(facilityKeys)
+  const pool = available.filter((item) => !exclude.has(item.id))
+  const fallback = available.length
+    ? available
+    : SECT_MISSION_CATALOG.filter((item) => !item.requiresFacility)
+  const source = pool.length ? pool : fallback
   const item = source[Math.floor(Math.random() * source.length)]
   return withMissionDefaults(item, `${item.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`)
 }

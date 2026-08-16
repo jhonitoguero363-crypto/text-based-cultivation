@@ -315,12 +315,16 @@ const breakthroughRateText = computed(() => {
   if (!player.canBreakthrough) return ''
   const preview = player.getBreakthroughPreview()
   if (!preview) return ''
+  const rootPart =
+    preview.primaryRootValue != null
+      ? ` · 主灵根${preview.primaryRootValue}(${preview.rootBonus >= 0 ? '+' : ''}${preview.rootBonus}%)`
+      : ''
   const pillPart = preview.pillName
     ? preview.hasPill
       ? ` · 将服${preview.pillName}(+${preview.pillBonus}%)`
       : ` · 未备${preview.pillName}`
     : ''
-  return `成功率 ${preview.rate}%${pillPart}`
+  return `成功率 ${preview.rate}%${rootPart}${pillPart}`
 })
 
 function formatExp(n: number) {
@@ -594,7 +598,10 @@ async function onBreakthrough() {
   if (result.ok) {
     sessionGain.value = 0
     const pillTip = result.usedPill ? ` · 已服${result.usedPill}` : ''
-    toast(`突破成功：${beforeRealm} → ${result.realm} · 本层修为归零重计${pillTip}`)
+    const rankTip = result.rankPromotion
+      ? ` · 身份 ${result.rankPromotion.from}→${result.rankPromotion.to}`
+      : ''
+    toast(`突破成功：${beforeRealm} → ${result.realm} · 本层修为归零重计${pillTip}${rankTip}`)
   } else {
     const pillTip = result.usedPill ? ` · 已服${result.usedPill}` : ''
     toast(`突破失败，仍为${player.realm} · 修为降至 ${formatExp(result.expAfter)}${pillTip}`)

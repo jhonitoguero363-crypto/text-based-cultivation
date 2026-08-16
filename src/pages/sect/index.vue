@@ -84,8 +84,9 @@ import AppTabBar from '../../components/AppTabBar.vue'
 import FacilityIcon from '../../components/FacilityIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import StoneChip from '../../components/StoneChip.vue'
-import { SECT_OPTIONS, type SectOption } from '../../constants/sects'
+import { SECT_OPTIONS, getSectTierRank, type SectOption } from '../../constants/sects'
 import { formatSectStipendHint } from '../../constants/sect-stipend'
+import { resolveJoinRankFromRoots } from '../../constants/roots'
 import { sectIdToUiTheme, UI_THEME_LABEL } from '../../constants/ui-theme'
 import { usePlayerStore } from '../../stores/player'
 import { useSectStore } from '../../stores/sect'
@@ -116,6 +117,9 @@ const FACILITY_TONE: Record<string, 'jade' | 'gold' | 'mp' | 'hp'> = {
   garden: 'jade',
   cliff: 'hp',
   tower: 'mp',
+  demon_den: 'hp',
+  sword_tomb: 'mp',
+  ancestor_pool: 'gold',
   beast: 'jade'
 }
 
@@ -124,9 +128,13 @@ function facilityTone(key: string) {
 }
 
 function onChoose(item: SectOption) {
+  const previewRank = resolveJoinRankFromRoots(
+    player.roots,
+    getSectTierRank(item.tier)
+  )
   Taro.showModal({
     title: `加入${item.name}`,
-    content: `${item.tier} · ${item.faction} · ${item.tag}\n${item.desc}\n确认后将以「外门弟子」身份入门。`,
+    content: `${item.tier} · ${item.faction} · ${item.tag}\n${item.desc}\n依你主灵根「${player.rootBone}」与宗门等级，确认后将以「${previewRank}」身份入门。`,
     success: (res) => {
       if (!res.confirm) return
       const result = player.joinSect(item.id, item.name)
@@ -141,7 +149,7 @@ function onChoose(item: SectOption) {
       const stipend =
         result.stipendAmount > 0 ? ` · 月俸灵石 +${result.stipendAmount}` : ''
       Taro.showToast({
-        title: `已加入${item.name}，${gift}${stipend}`,
+        title: `已加入${item.name} · ${result.rank}，${gift}${stipend}`,
         icon: 'none',
         duration: 2800
       })
