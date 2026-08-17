@@ -38,9 +38,20 @@ RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# 与 TCR_* 一样由 GitHub Actions secrets 在构建时注入（见 workflow build-args）
+ARG LLM_API_KEY=
+ARG LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+ARG LLM_MODEL=glm-4-flash
+ARG GATEWAY_TOKEN=
+
 ENV NODE_ENV=production
 ENV PORT=8001
 ENV CHAT_INTERNAL_PORT=8787
+ENV LLM_API_KEY=$LLM_API_KEY
+ENV LLM_BASE_URL=$LLM_BASE_URL
+ENV LLM_MODEL=$LLM_MODEL
+ENV GATEWAY_TOKEN=$GATEWAY_TOKEN
+ENV DAILY_LIMIT=30
 EXPOSE 8001
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -58,13 +58,13 @@
           </view>
           <text class="hero__intro">{{ sect.desc }}</text>
           <text class="hero__stipend">{{ stipendHint }}</text>
-          <text class="hero__theme">界面风格 · {{ themeLabel }}</text>
+          <view class="hero__meta">
+            <text class="hero__theme">界面风格 · {{ themeLabel }}</text>
+            <view class="btn btn--ghost hero__leave-btn" @tap="onLeaveSect">退出宗门</view>
+          </view>
           <text v-if="player.hasHostileBetrayal()" class="hero__warn">
             叛出后入敌对派系 · 历练势均力敌交手必触发
           </text>
-          <view class="hero__leave">
-            <view class="btn btn--ghost" @tap="onLeaveSect">退出宗门</view>
-          </view>
         </view>
 
         <view class="panel">
@@ -242,10 +242,19 @@ function onChoose(item: SectOption) {
   line-height: 1.4;
 }
 
-.hero__leave {
-  margin-top: 12px;
+.hero__meta {
+  margin-top: 4px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hero__leave-btn {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 .sect-option {
@@ -382,8 +391,8 @@ function onChoose(item: SectOption) {
 }
 
 .hero__theme {
-  display: block;
-  margin-top: 4px;
+  flex: 1;
+  min-width: 0;
   font-size: 10px;
   color: var(--jade);
   line-height: 1.4;

@@ -80,41 +80,41 @@
 
 ### 构建与推送
 
-- push `main` 或手动 `workflow_dispatch` → 推送到 TCR：`text-based-cultivation:latest` / `:${GITHUB_SHA}`
+- push `main` / `ai` 或手动 `workflow_dispatch` → 推送到 TCR：`text-based-cultivation:latest` / `:${GITHUB_SHA}`
 - Dockerfile 构建 H5 时已设 `TARO_APP_CHAT_API_BASE_URL=`，前端请求同域 `/v1/chat/visit`
+- LLM 配置与 `TCR_*` 一样写在 **GitHub → Settings → Secrets and variables → Actions**，构建时打进镜像：
 
-本地试跑：
+| Secret | 必填 | 说明 |
+|--------|------|------|
+| `LLM_API_KEY` | 是 | 智谱（或其他）API Key |
+| `LLM_BASE_URL` | 是 | 例：`https://open.bigmodel.cn/api/paas/v4` |
+| `LLM_MODEL` | 是 | 例：`glm-4-flash` |
+| `GATEWAY_TOKEN` | 否 | 网关鉴权 |
+
+每日请求上限 `DAILY_LIMIT` 在镜像内写死为 **30**。
+
+腾讯云部署时一般**不用再填**这些；需要临时覆盖时仍可用容器环境变量。
+
+本地试跑（未走 Actions 时需自己传 Key）：
 
 ```bash
-docker build -t text-based-cultivation .
-docker run --rm -p 8001:8001 \
-  -e LLM_API_KEY=你的智谱Key \
-  -e LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4 \
-  -e LLM_MODEL=glm-4-flash \
-  -e GATEWAY_TOKEN= \
-  -e DAILY_LIMIT=30 \
-  text-based-cultivation
+docker build -t text-based-cultivation \
+  --build-arg LLM_API_KEY=你的智谱Key \
+  .
+docker run --rm -p 8001:8001 text-based-cultivation
 ```
 
 打开 `http://127.0.0.1:8001`，测拜访交谈；健康检查：`http://127.0.0.1:8001/v1/health`。
 
-### 腾讯云容器环境变量
+### 腾讯云容器
 
-在容器服务 / 应用中注入（**不要**把 Key 打进镜像）：
+- 容器端口：**8001**
+- 镜像：TCR 上的 `text-based-cultivation:latest`
+- 环境变量：通常不用配 LLM（已由 Actions 注入）；可选覆盖 `PORT` 等
 
-| 变量 | 说明 |
-|------|------|
-| `LLM_API_KEY` | 必填 |
-| `LLM_BASE_URL` | 默认智谱 paas v4 |
-| `LLM_MODEL` | 如 `glm-4-flash` |
-| `GATEWAY_TOKEN` | 可选；若设置，前端构建需同步 `TARO_APP_CHAT_GATEWAY_TOKEN` |
-| `DAILY_LIMIT` | 每日上限，默认 30 |
-| `PORT` | 对外端口，默认 **8001**（与腾讯云容器端口一致） |
-| `CHAT_INTERNAL_PORT` | 网关内部端口，默认 8787 |
+对外只映射 **8001**；无需再单独暴露 8787。
 
-对外只映射 **8001**；无需再单独暴露 8787。平台侧容器端口也填 `8001`。
-
-若启用 `GATEWAY_TOKEN`：改 Dockerfile 构建参数或 workflow `build-args` 写入 `TARO_APP_CHAT_GATEWAY_TOKEN`（会进前端包，仅防顺手刷接口，不能当机密）。
+若启用 `GATEWAY_TOKEN`：前端还需构建期 `TARO_APP_CHAT_GATEWAY_TOKEN`（会进前端包，仅防顺手刷接口）。
 
 ## 数据源
 

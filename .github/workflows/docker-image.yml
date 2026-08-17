@@ -25,12 +25,19 @@ jobs:
         env:
           TCR_REGISTRY: ${{ secrets.TCR_REGISTRY }}
           TCR_NAMESPACE: ${{ secrets.TCR_NAMESPACE }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
         run: |
           trim() { printf '%s' "$1" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
           registry="$(trim "$TCR_REGISTRY")"
           namespace="$(trim "$TCR_NAMESPACE")"
           if [ -z "$registry" ] || [ -z "$namespace" ]; then
             echo "::error::TCR_REGISTRY or TCR_NAMESPACE is empty. Add both in Settings → Secrets and variables → Actions (no trailing newline)."
+            exit 1
+          fi
+          if [ -z "$(trim "$LLM_API_KEY")" ] || [ -z "$(trim "$LLM_BASE_URL")" ] || [ -z "$(trim "$LLM_MODEL")" ]; then
+            echo "::error::LLM_API_KEY / LLM_BASE_URL / LLM_MODEL must all be set in Actions secrets (same place as TCR_*)."
             exit 1
           fi
           echo "registry=${registry}" >> "$GITHUB_OUTPUT"
@@ -61,3 +68,8 @@ jobs:
           tags: ${{ steps.image.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            LLM_API_KEY=${{ secrets.LLM_API_KEY }}
+            LLM_BASE_URL=${{ secrets.LLM_BASE_URL }}
+            LLM_MODEL=${{ secrets.LLM_MODEL }}
+            GATEWAY_TOKEN=${{ secrets.GATEWAY_TOKEN }}
