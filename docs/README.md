@@ -27,6 +27,7 @@
 | [宗门人物-妖族](./宗门人物-妖族.md) | 妖族名录 |
 | [历练人物](./历练人物.md) | 秘境偶遇与坊市人物 |
 | [任务设定](./任务设定.md) | 任务堂规则；通用 / 特色任务名录 |
+| [LLM对话接入](./LLM对话接入.md) | 拜访 LLM 交谈；亲密与结伴/切磋/收礼意愿 |
 | [法宝设定](./法宝设定.md) | 四类法宝、六阶品阶、器阁目录 |
 | [丹药设定](./丹药设定.md) | 效果八类、丹阁目录、炼制配方 |
 | [图鉴-矿石](./图鉴-矿石.md) | 矿石品阶与名录 |
@@ -61,6 +62,7 @@
 - 奇遇掉落：`src/constants/mission-catalog.ts`（奇遇条目 `drops`，可待补充）
 - 任务：`src/constants/mission-catalog.ts` / `mission-localize.ts`（按宗门替换设施称呼）
 - 坊市招收弟子：`src/constants/recruit-disciple.ts`
+- 拜访 LLM 对话网关：`server/`；客户端 `src/constants/chat-api.ts` / `chat-relation.ts` / `src/services/visit-chat.ts`（见 [LLM对话接入](./LLM对话接入.md)）
 
 图鉴图标资源位于 `src/assets/{ores,herbs,beasts,pets,techniques,pills,loot,locations}/icons/`，切片脚本见 `scripts/slice-*-icons.mjs`（功法特色另见 `slice-technique-special-icons.mjs`；历练材料见 `slice-loot-icons.mjs`；历练地点见 `slice-location-icons.mjs`）。运行时经 `*-icon-src.ts` **按需懒加载**，避免首包打入全部 PNG。
 

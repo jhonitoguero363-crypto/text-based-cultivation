@@ -1,3 +1,6 @@
+import { factionOfNpcKind } from './adventure-npc-catalog'
+import { areFactionsHostile, getSectOption } from './sects'
+
 /** 人物亲密值上限（宗门 / 坊市 / 历练共用） */
 export const INTIMACY_MAX = 100
 
@@ -14,19 +17,70 @@ export const INTIMACY_SHARED_ADVENTURE = 5
 /** 退出宗门：对该宗人物亲密保留比例（大幅降低） */
 export const INTIMACY_LEAVE_SECT_KEEP_RATIO = 0.2
 
+/**
+ * 敌对派系首次接触：在态度种子上再压低。
+ * 本宗 / 同派非敌对：不启用。
+ */
+export const INTIMACY_HOSTILE_SEED_MULT = 0.25
+/** 敌对派系初始亲密上限（即使态度友善也不超过此值） */
+export const INTIMACY_HOSTILE_SEED_MAX = 3
+
+export interface IntimacySeedOptions {
+  /** 相对玩家为敌对派系人物 */
+  hostile?: boolean
+}
+
 export function clampIntimacy(value: number) {
   return Math.max(0, Math.min(INTIMACY_MAX, Math.floor(value)))
 }
 
 /** 由态度文案推算初始亲密（首次接触时） */
-export function seedIntimacyFromAttitude(attitude: string | undefined | null) {
+export function seedIntimacyFromAttitude(
+  attitude: string | undefined | null,
+  options?: IntimacySeedOptions
+) {
   const text = (attitude || '').trim()
-  if (!text) return 0
-  if (text.includes('冲突') || text.includes('敌视')) return 0
-  if (text.includes('冷淡') || text.includes('严格')) return 5
-  if (text.includes('友善') || text.includes('友好')) return 25
-  if (text.includes('中立')) return 10
-  return 0
+  let base = 0
+  if (text.includes('冲突') || text.includes('敌视')) base = 0
+  else if (text.includes('冷淡') || text.includes('严格')) base = 5
+  else if (text.includes('友善') || text.includes('友好')) base = 25
+  else if (text.includes('中立')) base = 10
+  else base = 0
+
+  if (options?.hostile) {
+    base = Math.min(INTIMACY_HOSTILE_SEED_MAX, Math.floor(base * INTIMACY_HOSTILE_SEED_MULT))
+  }
+  return clampIntimacy(base)
+}
+
+/**
+ * 是否应对该目标使用「敌对派系」低初始亲密。
+ * 本宗同门恒为 false；派系互为敌对（正道/魔门/妖族）为 true。
+ */
+export function isHostileIntimacyTarget(
+  playerSectId: string | null | undefined,
+  target: {
+    sectId?: string | null
+    kind?: string | null
+    source?: string | null
+  }
+) {
+  const pid = String(playerSectId || '').trim()
+  const tid = String(target.sectId || '').trim()
+  if (pid && tid && pid === tid) return false
+
+  const playerFaction = getSectOption(pid)?.faction || null
+  if (tid) {
+    const npcFaction = getSectOption(tid)?.faction || null
+    if (playerFaction && npcFaction) return areFactionsHostile(playerFaction, npcFaction)
+  }
+
+  const kindFaction = factionOfNpcKind(target.kind)
+  if (playerFaction && kindFaction) return areFactionsHostile(playerFaction, kindFaction)
+  if (!playerFaction && kindFaction) {
+    return kindFaction === '魔门' || kindFaction === '妖族'
+  }
+  return false
 }
 
 /** 亲密档位文案 */

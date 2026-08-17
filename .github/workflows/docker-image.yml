@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - ai
   workflow_dispatch:
 
 env:
@@ -56,6 +57,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64
           tags: ${{ steps.image.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

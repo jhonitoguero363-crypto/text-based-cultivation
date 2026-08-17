@@ -88,7 +88,8 @@ import {
 import {
   clampIntimacy,
   INTIMACY_LEAVE_SECT_KEEP_RATIO,
-  seedIntimacyFromAttitude
+  seedIntimacyFromAttitude,
+  type IntimacySeedOptions
 } from '../constants/intimacy'
 
 export type DualPartner = {
@@ -435,12 +436,16 @@ export const usePlayerStore = defineStore('player', () => {
   /** 待展示的月俸提示（内存；页面 didShow 消费） */
   const pendingStipendNotice = ref('')
 
-  function getIntimacy(characterId: string, attitudeHint?: string) {
+  function getIntimacy(
+    characterId: string,
+    attitudeHint?: string,
+    seedOpts?: IntimacySeedOptions
+  ) {
     const id = (characterId || '').trim()
     if (!id || id === 'self') return 0
     const raw = intimacyMap.value[id]
     if (typeof raw === 'number' && Number.isFinite(raw)) return clampIntimacy(raw)
-    return clampIntimacy(seedIntimacyFromAttitude(attitudeHint))
+    return clampIntimacy(seedIntimacyFromAttitude(attitudeHint, seedOpts))
   }
 
   function setIntimacy(characterId: string, value: number) {
@@ -451,24 +456,33 @@ export const usePlayerStore = defineStore('player', () => {
     return next
   }
 
-  /** 增减亲密；首次无记录时可用态度作底 */
-  function addIntimacy(characterId: string, delta: number, attitudeHint?: string) {
+  /** 增减亲密；首次无记录时可用态度作底（可叠加敌对压低） */
+  function addIntimacy(
+    characterId: string,
+    delta: number,
+    attitudeHint?: string,
+    seedOpts?: IntimacySeedOptions
+  ) {
     const id = (characterId || '').trim()
     if (!id || id === 'self') return 0
     const base =
       typeof intimacyMap.value[id] === 'number'
         ? intimacyMap.value[id]
-        : seedIntimacyFromAttitude(attitudeHint)
+        : seedIntimacyFromAttitude(attitudeHint, seedOpts)
     const next = clampIntimacy(base + delta)
     intimacyMap.value = { ...intimacyMap.value, [id]: next }
     return next
   }
 
-  function ensureIntimacySeed(characterId: string, attitudeHint?: string) {
+  function ensureIntimacySeed(
+    characterId: string,
+    attitudeHint?: string,
+    seedOpts?: IntimacySeedOptions
+  ) {
     const id = (characterId || '').trim()
     if (!id || id === 'self') return 0
     if (typeof intimacyMap.value[id] === 'number') return clampIntimacy(intimacyMap.value[id])
-    return setIntimacy(id, seedIntimacyFromAttitude(attitudeHint))
+    return setIntimacy(id, seedIntimacyFromAttitude(attitudeHint, seedOpts))
   }
 
   function setDualPartner(partner: DualPartner | null) {

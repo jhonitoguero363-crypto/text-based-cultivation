@@ -89,6 +89,66 @@
         </view>
       </view>
 
+      <view v-if="canChat" class="panel chat-panel">
+        <view class="section-title">
+          <text class="section-title__main">交谈</text>
+          <text class="section-title__sub">{{ chatBusy ? '对方沉吟中…' : '灵机对白' }}</text>
+        </view>
+        <scroll-view
+          class="chat-log"
+          scroll-y
+          :scroll-into-view="chatScrollInto"
+          scroll-with-animation
+        >
+          <view v-if="!chatLines.length" class="chat-log__empty empty-tip">
+            尚未开口 · 可点快捷语或自行输入
+          </view>
+          <view
+            v-for="(line, idx) in chatLines"
+            :id="`chat-line-${idx}`"
+            :key="`${line.role}-${idx}`"
+            class="chat-bubble"
+            :class="`chat-bubble--${line.role}`"
+          >
+            <text class="chat-bubble__role">{{ line.role === 'user' ? '我' : member.name }}</text>
+            <text class="chat-bubble__text">{{ line.content }}</text>
+          </view>
+          <view id="chat-log-end" class="chat-log__end" />
+        </scroll-view>
+        <view class="chat-presets">
+          <view
+            v-for="preset in chatPresets"
+            :key="preset"
+            class="chat-preset"
+            :class="{ 'chat-preset--off': chatBusy }"
+            @tap="sendChat(preset)"
+          >
+            {{ preset }}
+          </view>
+        </view>
+        <view class="chat-compose">
+          <input
+            class="chat-input"
+            type="text"
+            maxlength="80"
+            :disabled="chatBusy"
+            :value="chatDraft"
+            placeholder="说一句…"
+            confirm-type="send"
+            @input="onChatInput"
+            @confirm="sendChat()"
+          />
+          <view
+            class="btn btn--sm"
+            :class="chatBusy || !chatDraft.trim() ? 'btn--ghost' : 'btn--gold'"
+            @tap="sendChat()"
+          >
+            {{ chatBusy ? '…' : '发送' }}
+          </view>
+        </view>
+        <text v-if="relationHint" class="chat-relation">{{ relationHint }}</text>
+      </view>
+
       <view v-if="isMerchant && merchantOffers.length" class="panel">
         <view class="section-title">
           <text class="section-title__main">行商私货</text>
@@ -143,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import PageHeader from '../../components/PageHeader.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
@@ -185,9 +245,18 @@ import {
 } from '../../constants/sect-duel'
 import { getRealmPracticeExpBase } from '../../constants/realm-exp'
 import { rollSparOutcome } from '../../constants/spar'
-import { DUAL_CULTIVATION_INTIMACY_MIN, formatIntimacy, INTIMACY_GIFT, INTIMACY_INVITE_ADVENTURE } from '../../constants/intimacy'
+import { VISIT_CHAT_PRESETS } from '../../constants/chat-api'
+import {
+  applyStanceToIntimacyGain,
+  getChatRelation,
+  stanceLabel,
+  stanceRefuseToast,
+  type ChatRelationEffects
+} from '../../constants/chat-relation'
+import { formatIntimacy, intimacyLabel, isHostileIntimacyTarget, INTIMACY_GIFT, INTIMACY_INVITE_ADVENTURE, DUAL_CULTIVATION_INTIMACY_MIN } from '../../constants/intimacy'
 import { getSectOption } from '../../constants/sects'
 import type { TreasureGrade } from '../../constants/treasure'
+import { getVisitChatHistory, requestVisitChat, type VisitChatTurn } from '../../services/visit-chat'
 import { ADVENTURE_COMPANION_MAX, useAdventureStore } from '../../stores/adventure'
 import { usePlayerStore } from '../../stores/player'
 import { useSectStore, type Member } from '../../stores/sect'
@@ -265,8 +334,137 @@ const member = computed<VisitMember | null>(() => {
 const intimacyText = computed(() => {
   const target = member.value
   if (!target || target.self) return ''
-  return formatIntimacy(player.getIntimacy(target.id, target.attitude))
+  return formatIntimacy(player.getIntimacy(target.id, target.attitude, intimacySeedOpts(target)))
 })
+
+function intimacySeedOpts(target: VisitMember | null | undefined) {
+  if (!target || target.self) return undefined
+  return {
+    hostile: isHostileIntimacyTarget(player.sectId, {
+      sectId: target.sectId,
+      kind: target.kind,
+      source: target.source
+    })
+  }
+}
+
+const canChat = computed(() => {
+  const target = member.value
+  return !!target && !target.self
+})
+
+const chatPresets = VISIT_CHAT_PRESETS
+const chatDraft = ref('')
+const chatBusy = ref(false)
+const chatLines = ref<VisitChatTurn[]>([])
+const relationTick = ref(0)
+const chatScrollInto = ref('')
+
+function scrollChatToEnd() {
+  chatScrollInto.value = ''
+  // 下一帧再设，确保 scroll-view 识别变化
+  setTimeout(() => {
+    chatScrollInto.value = 'chat-log-end'
+  }, 32)
+}
+
+const chatRelation = computed<ChatRelationEffects>(() => {
+  relationTick.value
+  const id = member.value?.id || ''
+  return id ? getChatRelation(id) : getChatRelation('')
+})
+
+const relationHint = computed(() => {
+  if (!canChat.value) return ''
+  const r = chatRelation.value
+  return `意愿 · 结伴${stanceLabel(r.invite)} · 切磋${stanceLabel(r.spar)} · 收礼${stanceLabel(r.gift)}`
+})
+
+function reloadChatLines() {
+  const id = member.value?.id || ''
+  chatLines.value = id ? getVisitChatHistory(id) : []
+  relationTick.value += 1
+  scrollChatToEnd()
+}
+
+watch(
+  () => member.value?.id,
+  () => {
+    chatDraft.value = ''
+    reloadChatLines()
+  },
+  { immediate: true }
+)
+
+function onChatInput(e: { detail?: { value?: string } }) {
+  chatDraft.value = String(e?.detail?.value || '')
+}
+
+async function sendChat(preset?: string) {
+  const target = member.value
+  if (!target || target.self || chatBusy.value) return
+  const text = String(preset || chatDraft.value || '').trim().slice(0, 80)
+  if (!text) return toast('请先说一句')
+
+  chatBusy.value = true
+  chatDraft.value = ''
+  try {
+    const intimacy = player.getIntimacy(target.id, target.attitude, intimacySeedOpts(target))
+    const result = await requestVisitChat({
+      utterance: text,
+      member: {
+        id: target.id,
+        name: target.name,
+        title: target.title,
+        realm: target.realm,
+        group: target.group,
+        personality: target.personality,
+        specialty: target.specialty,
+        note: target.note,
+        attitude: target.attitude,
+        intimacy,
+        intimacyLabel: intimacyLabel(intimacy),
+        sectName:
+          target.source === 'market'
+            ? String(target.kind || '坊市')
+            : sect.name || getSectOption(target.sectId)?.name || '',
+        source: target.source || 'sect',
+        hostileFaction: !!intimacySeedOpts(target)?.hostile
+      },
+      player: {
+        id: 'self',
+        name: player.name || '散修',
+        realm: player.realm,
+        rank: player.rank || '散修',
+        sectName: player.sect || sect.name || '',
+        faction: getSectOption(player.sectId)?.faction || ''
+      },
+      sceneHint: target.source === 'market' ? '坊市偶遇交谈' : '宗门拜访闲聊'
+    })
+    reloadChatLines()
+
+    const parts: string[] = []
+    if (!result.fallback && result.effects.intimacyDelta) {
+      const next = player.addIntimacy(
+        target.id,
+        result.effects.intimacyDelta,
+        target.attitude,
+        intimacySeedOpts(target)
+      )
+      player.persist()
+      const sign = result.effects.intimacyDelta > 0 ? '+' : ''
+      parts.push(`亲密 ${sign}${result.effects.intimacyDelta} → ${formatIntimacy(next)}`)
+    }
+    if (result.fallback) {
+      parts.push(
+        result.error === 'network' || result.error === 'empty' ? '灵机不显，以常言对之' : '对方应之以常言'
+      )
+    }
+    if (parts.length) toast(parts.join(' · '))
+  } finally {
+    chatBusy.value = false
+  }
+}
 
 useDidShow(() => {
   adventure.ensureDailyMarket(player.realmState.major)
@@ -276,9 +474,10 @@ useDidShow(() => {
   }
   const target = member.value
   if (target && !target.self) {
-    player.ensureIntimacySeed(target.id, target.attitude)
+    player.ensureIntimacySeed(target.id, target.attitude, intimacySeedOpts(target))
     player.persist()
   }
+  reloadChatLines()
 })
 
 const isMerchant = computed(
@@ -308,14 +507,33 @@ const merchantOffers = computed(() => {
 })
 
 const actions = computed(() => {
+  const rel = chatRelation.value
   const list = [
-    { title: '邀请历练', desc: '结伴探索秘境；邀请与同行结束均可增亲密' },
-    { title: '切磋比武', desc: '点到为止；可负，任务仍算' },
+    {
+      title: '邀请历练',
+      desc:
+        rel.invite === 'refuse'
+          ? '对方目前不愿结伴'
+          : `结伴探索；意愿 · ${stanceLabel(rel.invite)}`
+    },
+    {
+      title: '切磋比武',
+      desc:
+        rel.spar === 'refuse'
+          ? '对方目前不愿切磋'
+          : `点到为止；意愿 · ${stanceLabel(rel.spar)}`
+    },
     {
       title: '生死比斗',
       desc: '胜则尽夺对方资源，败则伤或陨'
     },
-    { title: '赠送物品', desc: '消耗药材或丹药，提升亲密' },
+    {
+      title: '赠送物品',
+      desc:
+        rel.gift === 'refuse'
+          ? '对方目前不愿收礼'
+          : `消耗药材或丹药；意愿 · ${stanceLabel(rel.gift)}`
+    },
     { title: '邀请双修', desc: '邀至洞府双修，仅增修为' }
   ]
   const target = member.value
@@ -375,7 +593,7 @@ const actions = computed(() => {
     next = next.filter((item) => item.title !== '生死比斗')
   }
   const targetGender = inferCharacterGender(target.name)
-  const intimacy = player.getIntimacy(target.id, target.attitude)
+  const intimacy = player.getIntimacy(target.id, target.attitude, intimacySeedOpts(target))
   if (targetGender === player.gender || intimacy < DUAL_CULTIVATION_INTIMACY_MIN) {
     return next.filter((item) => item.title !== '邀请双修')
   }
@@ -524,6 +742,8 @@ function startDeathDuel() {
 function inviteToAdventure() {
   const target = member.value
   if (!target || target.self) return toast('不可邀请自己')
+  const stance = getChatRelation(target.id).invite
+  if (stance === 'refuse') return toast(stanceRefuseToast('invite'))
   const result = adventure.inviteCompanion({
     id: target.id,
     name: target.name,
@@ -538,7 +758,8 @@ function inviteToAdventure() {
     if (result.reason === 'full') return toast(`同行已满（最多 ${ADVENTURE_COMPANION_MAX} 人）`)
     return toast('邀请失败')
   }
-  const next = player.addIntimacy(target.id, INTIMACY_INVITE_ADVENTURE, target.attitude)
+  const gain = applyStanceToIntimacyGain(INTIMACY_INVITE_ADVENTURE, stance)
+  const next = player.addIntimacy(target.id, gain, target.attitude)
   player.persist()
   toast(`已邀请${target.name}同行 · 亲密 ${formatIntimacy(next)}`)
 }
@@ -593,12 +814,15 @@ function buyMerchantOffer(item: MarketOffer) {
 function giftItem() {
   const target = member.value
   if (!target || target.self) return toast('不可赠予自己')
+  const stance = getChatRelation(target.id).gift
+  if (stance === 'refuse') return toast(stanceRefuseToast('gift'))
   const gift =
     player.bag.find((item) => item.category === '药材' && item.count > 0) ||
     player.bag.find((item) => item.category === '丹药' && item.count > 0)
   if (!gift) return toast('背包无药材或丹药可赠')
   if (!player.removeBagItem(gift.name, gift.category, 1)) return toast('赠送失败')
-  const next = player.addIntimacy(target.id, INTIMACY_GIFT, target.attitude)
+  const gain = applyStanceToIntimacyGain(INTIMACY_GIFT, stance)
+  const next = player.addIntimacy(target.id, gain, target.attitude)
   player.persist()
   toast(`赠予${gift.name}，亲密 ${formatIntimacy(next)}`)
 }
@@ -612,8 +836,12 @@ function onAction(title: string) {
     if (!member.value || member.value.self) return toast('不可与自己切磋')
     if (player.injured) return toast('伤势未愈，不宜切磋')
     if (player.onCliff) return toast('思过崖面壁期间不可动手')
+    if (getChatRelation(member.value.id).spar === 'refuse') {
+      return toast(stanceRefuseToast('spar'))
+    }
 
     const foe = member.value
+    const sparStance = getChatRelation(foe.id).spar
     const enemyPower = Math.max(1, foe.power || 1)
     const preview = buildBattlePreview({
       myPower: player.combatPower,
@@ -657,7 +885,8 @@ function onAction(title: string) {
         const parts: string[] = [flavor]
 
         if (battle.won) {
-          const next = player.addIntimacy(foe.id, 2, foe.attitude)
+          const gain = applyStanceToIntimacyGain(2, sparStance)
+          const next = player.addIntimacy(foe.id, gain, foe.attitude)
           parts.push(`亲密 ${formatIntimacy(next)}`)
         } else {
           parts.push('亲密未变')
@@ -723,7 +952,7 @@ function onAction(title: string) {
     if (inferCharacterGender(target.name) === player.gender) {
       return toast('同性不可双修')
     }
-    const intimacy = player.getIntimacy(target.id, target.attitude)
+    const intimacy = player.getIntimacy(target.id, target.attitude, intimacySeedOpts(target))
     if (intimacy < DUAL_CULTIVATION_INTIMACY_MIN) {
       return toast(`亲密不足 ${DUAL_CULTIVATION_INTIMACY_MIN}，暂不可双修`)
     }
@@ -804,6 +1033,88 @@ function handleMoleTalk() {
   font-size: 12px;
   line-height: 1.5;
   color: var(--hp);
+}
+.chat-log {
+  height: 220px;
+  max-height: 220px;
+  box-sizing: border-box;
+  padding: 4px 2px 6px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.chat-log__empty {
+  padding: 24px 8px;
+  text-align: center;
+}
+.chat-log__end {
+  height: 1px;
+  width: 100%;
+}
+.chat-bubble {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  margin-bottom: 6px;
+}
+.chat-bubble:last-of-type {
+  margin-bottom: 0;
+}
+.chat-bubble--user {
+  background: rgba(46, 59, 89, 0.35);
+}
+.chat-bubble__role {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.chat-bubble__text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.chat-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.chat-preset {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text-secondary);
+}
+.chat-preset--off {
+  opacity: 0.45;
+}
+.chat-compose {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+.chat-relation {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 .arrow { color: var(--text-muted); font-size: 18px; line-height: 1; }
 .action-row {

@@ -23,6 +23,10 @@ declare namespace NodeJS {
      * @see https://taro-docs.jd.com/docs/next/env-mode-config#特殊环境变量-taro_app_id
      */
     TARO_APP_ID: string
+    /** H5 对话网关基址；正式同域部署请设为空字符串 */
+    TARO_APP_CHAT_API_BASE_URL?: string
+    /** 与服务端 GATEWAY_TOKEN 一致（构建期注入） */
+    TARO_APP_CHAT_GATEWAY_TOKEN?: string
   }
 }
 

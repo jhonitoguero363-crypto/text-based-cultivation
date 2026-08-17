@@ -115,7 +115,7 @@
             </view>
             <text class="market-npc__meta">{{ npc.title }} · {{ npc.realm }}</text>
             <text class="market-npc__event">
-              {{ npc.event }} · 亲密 {{ formatIntimacy(player.getIntimacy(npc.id, '中立')) }}
+              {{ npc.event }} · 亲密 {{ formatIntimacy(player.getIntimacy(npc.id, '中立', { hostile: isHostileIntimacyTarget(player.sectId, { kind: npc.kind, source: 'market' }) })) }}
             </text>
           </view>
           <view class="btn btn--gold btn--sm" @tap="visitMarketNpc(npc)">拜访</view>
@@ -259,7 +259,7 @@ import {
 } from '../../constants/adventure-locations'
 import type { AdventureNpc } from '../../constants/adventure-npc-catalog'
 import { formatUntilNextGameDay } from '../../constants/game-time'
-import { formatIntimacy } from '../../constants/intimacy'
+import { formatIntimacy, isHostileIntimacyTarget } from '../../constants/intimacy'
 import { isMissionObjectiveMet } from '../../constants/mission-catalog'
 import {
   calcMarketRecyclePrice,
