@@ -1,5 +1,6 @@
 /**
  * 从功法图鉴 atlas 切片（上区 5×6 网格 + 下区宽距行，共 42 部对齐目录）。
+ * 仅覆盖 tech-001～042；特色功法请用 slice-technique-special-icons.mjs。
  */
 import fs from 'fs'
 import path from 'path'
@@ -65,7 +66,9 @@ const w = meta.width || 1024
 const h = meta.height || 908
 
 for (const file of fs.readdirSync(OUT_DIR)) {
-  if (file.endsWith('.png')) fs.unlinkSync(path.join(OUT_DIR, file))
+  // 保留特色功法 tech-043+；仅重切通用图鉴
+  const m = file.match(/^tech-(\d+)\.png$/)
+  if (m && Number(m[1]) <= 42) fs.unlinkSync(path.join(OUT_DIR, file))
 }
 
 const nameToFile = {}
@@ -105,8 +108,14 @@ for (const cell of BOTTOM) {
   await sliceOne(cell.name, cell.x, cell.y, cell.half)
 }
 
+// 合并已有特色映射（tech-043+），避免重切通用图鉴时冲掉
+const prev = fs.existsSync(MAP_FILE) ? fs.readFileSync(MAP_FILE, 'utf8') : ''
+for (const m of prev.matchAll(/'([^']+)':\s*'(tech-(?:0(?:4[3-9]|[5-9]\d)|[1-9]\d{2,})\.png)'/g)) {
+  if (!nameToFile[m[1]]) nameToFile[m[1]] = m[2]
+}
+
 const lines = []
-lines.push('/** 功法图标：由 scripts/slice-technique-icons.mjs 自图鉴切片生成 */')
+lines.push('/** 功法图标：通用 atlas + 特色功法 atlas-special 切片 */')
 lines.push('')
 lines.push('export const TECHNIQUE_ICON_FILES: Record<string, string> = {')
 for (const [name, file] of Object.entries(nameToFile)) {

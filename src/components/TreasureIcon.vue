@@ -10,8 +10,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
 import { FORGE_SHOP_CATALOG } from '../constants/treasure-catalog'
-import { getTreasureIconUrl } from '../constants/treasure-icon-src'
+import { loadTreasureIconUrl } from '../constants/treasure-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -29,7 +30,13 @@ const resolvedType = computed(() => {
   return FORGE_SHOP_CATALOG.find((item) => item.name === props.name)?.type
 })
 
-const src = computed(() => getTreasureIconUrl(props.name, props.grade, resolvedType.value))
+const src = useAsyncIconSrc(
+  () => `${props.name}::${props.grade || ''}::${resolvedType.value || ''}`,
+  (key) => {
+    const [name, grade, type] = key.split('::')
+    return loadTreasureIconUrl(name, grade || undefined, type || undefined)
+  }
+)
 </script>
 
 <style lang="scss">

@@ -27,8 +27,9 @@ export default {
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#0E1424',
-    navigationBarTitleText: '青云修仙',
+    navigationBarTitleText: '文字修仙',
     navigationBarTextStyle: 'white',
     backgroundColor: '#0E1424'
-  }
+  },
+  lazyCodeLoading: 'requiredComponents'
 }

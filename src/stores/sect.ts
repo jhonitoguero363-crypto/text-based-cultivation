@@ -13,6 +13,10 @@ import {
   type MissionObjectiveKind
 } from '../constants/mission-catalog'
 import {
+  rollRecruitDisciples,
+  type RecruitedMember
+} from '../constants/recruit-disciple'
+import {
   getSectFacilities,
   type SectFacility
 } from '../constants/sect-facilities'
@@ -26,7 +30,10 @@ import {
   getTechniqueProficiencyInfo
 } from '../constants/technique-proficiency'
 import { SPELL_CATALOG } from '../constants/spell-catalog'
-import { TECHNIQUE_CATALOG } from '../constants/technique-catalog'
+import {
+  isTechniqueAvailableInFaction,
+  TECHNIQUE_CATALOG
+} from '../constants/technique-catalog'
 
 export interface SectTechnique {
   id: string
@@ -34,6 +41,8 @@ export interface SectTechnique {
   grade: string
   gradeTier: string
   type: string
+  /** 灵根属性九种：金木水火土风冰雷无属性 */
+  attr: string
   school: string
   realmLabel: string
   realm: string
@@ -79,7 +88,8 @@ export interface SectSpell {
 function buildTechniques(
   ownedNames: Set<string> = new Set(),
   activeId: string | null = null,
-  proficiencyMap: Record<string, number> = {}
+  proficiencyMap: Record<string, number> = {},
+  sectFaction: string = ''
 ): SectTechnique[] {
   let resolvedActive: string | null = null
   if (activeId) {
@@ -89,7 +99,10 @@ function buildTechniques(
   if (!resolvedActive) {
     resolvedActive = TECHNIQUE_CATALOG.find((item) => ownedNames.has(item.name))?.id || null
   }
-  return TECHNIQUE_CATALOG.map((item) => {
+  return TECHNIQUE_CATALOG.filter((item) => {
+    if (ownedNames.has(item.name)) return true
+    return isTechniqueAvailableInFaction(item, sectFaction)
+  }).map((item) => {
     const owned = ownedNames.has(item.name)
     const points = owned
       ? Math.max(0, Math.round((proficiencyMap[item.name] ?? 0) * 10) / 10)
@@ -101,6 +114,7 @@ function buildTechniques(
       grade: item.grade,
       gradeTier: item.gradeTier,
       type: item.type,
+      attr: item.attr || item.type,
       school: item.school,
       realmLabel: item.realmLabel,
       realm: item.realm,
@@ -159,7 +173,12 @@ export type Mission = DailyMission
 
 export type Member = CatalogMember & {
   self?: boolean
+  recruited?: boolean
+  rootBone?: string
+  roots?: RecruitedMember['roots']
 }
+
+const RECRUITED_STORAGE_KEY = 'sect-recruited-members-v1'
 
 export const useSectStore = defineStore('sect', () => {
   const joined = ref(false)
@@ -190,8 +209,47 @@ export const useSectStore = defineStore('sect', () => {
   const missionsCompletedToday = ref(0)
 
   const members = ref<Member[]>([])
+  /** 坊市招收等额外弟子（按宗门持久化，避免 hydrate 被名录覆盖） */
+  const recruitedBySect = ref<Record<string, RecruitedMember[]>>({})
 
   const visitTargetId = ref('')
+
+  function persistRecruited() {
+    try {
+      Taro.setStorageSync(RECRUITED_STORAGE_KEY, recruitedBySect.value)
+    } catch {
+      // ignore
+    }
+  }
+
+  function hydrateRecruited() {
+    try {
+      const data = Taro.getStorageSync(RECRUITED_STORAGE_KEY)
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        recruitedBySect.value = data as Record<string, RecruitedMember[]>
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  function recruitedForCurrentSect() {
+    const id = sectId.value
+    if (!id) return [] as RecruitedMember[]
+    return (recruitedBySect.value[id] || []).map((item) => ({ ...item }))
+  }
+
+  function mergeMembersWithRecruited(catalog: CatalogMember[]) {
+    const extras = recruitedForCurrentSect()
+    const seen = new Set(catalog.map((item) => item.id))
+    const merged = catalog.map((item) => ({ ...item }))
+    extras.forEach((item) => {
+      if (seen.has(item.id)) return
+      seen.add(item.id)
+      merged.push({ ...item })
+    })
+    return merged
+  }
 
   const memberStats = computed(() => {
     const list = members.value.filter((item) => !item.self)
@@ -422,6 +480,21 @@ export const useSectStore = defineStore('sect', () => {
     }
   }
 
+  /** 找出卧底：随机指定一名非自身弟子 */
+  function assignMoleMember(item: DailyMission) {
+    const pool = members.value.filter((m) => !m.self)
+    if (!pool.length) {
+      item.meta = { ...(item.meta || {}), moleMemberId: '', moleMemberName: '' }
+      return
+    }
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    item.meta = {
+      ...(item.meta || {}),
+      moleMemberId: pick.id,
+      moleMemberName: pick.name
+    }
+  }
+
   /** 领取任务（同时最多一个，无每日次数上限）；成功返回任务 */
   function acceptMission(instanceId: string) {
     ensureDailyMissions()
@@ -434,6 +507,9 @@ export const useSectStore = defineStore('sect', () => {
     const kind = item.objective?.kind
     if (kind === 'escort_deliver' || kind === 'pill_deliver') {
       assignEscortMembers(item)
+    }
+    if (kind === 'find_mole') {
+      assignMoleMember(item)
     }
     if (kind === 'market_talk') {
       item.meta = { ...(item.meta || {}), marketTargetName: '散修' }
@@ -519,7 +595,7 @@ export const useSectStore = defineStore('sect', () => {
   }
 
   function resetOwnedTechniques() {
-    techniques.value = buildTechniques()
+    techniques.value = buildTechniques(new Set(), null, {}, faction.value)
     spells.value = buildSpells()
   }
 
@@ -537,7 +613,12 @@ export const useSectStore = defineStore('sect', () => {
       bagItems.filter((item) => item.category === '法术').map((item) => item.name)
     )
     const currentActive = preferredActiveId || activeTechniqueId.value || null
-    techniques.value = buildTechniques(techNames, currentActive, techniqueProficiencyMap)
+    techniques.value = buildTechniques(
+      techNames,
+      currentActive,
+      techniqueProficiencyMap,
+      faction.value
+    )
     spells.value = buildSpells(spellNames, spellProficiencyMap)
   }
 
@@ -651,6 +732,28 @@ export const useSectStore = defineStore('sect', () => {
     return true
   }
 
+  /** 坊市招收弟子：写入名录并推进任务进度；返回新弟子 */
+  function recruitMarketDisciples(count = 3) {
+    if (!joined.value || !sectId.value) return null
+    const mission = activeMission.value
+    if (!mission || mission.objective?.kind !== 'recruit_disciples') return null
+    if (isMissionObjectiveMet(mission)) return null
+
+    const existingNames = members.value.map((item) => item.name)
+    const created = rollRecruitDisciples(sectId.value, count, existingNames)
+    const sid = sectId.value
+    const prev = recruitedBySect.value[sid] || []
+    recruitedBySect.value = {
+      ...recruitedBySect.value,
+      [sid]: [...prev, ...created]
+    }
+    members.value = [...members.value, ...created]
+    disciples.value = Math.max(disciples.value, members.value.length + 100)
+    persistRecruited()
+    reportMissionProgress('recruit_disciples', 1)
+    return created
+  }
+
   function clearJoinedSect() {
     joined.value = false
     sectId.value = ''
@@ -670,6 +773,10 @@ export const useSectStore = defineStore('sect', () => {
     gatherSpeed.value = 1
     members.value = []
     visitTargetId.value = ''
+    missions.value = []
+    missionDate.value = ''
+    missionsCompletedToday.value = 0
+    persistMissions()
   }
 
   function applyJoinedSect(idOrName: string) {
@@ -685,18 +792,19 @@ export const useSectStore = defineStore('sect', () => {
     faction.value = option.faction
     level.value = 1
     const catalog = getSectMembers(option.id)
-    disciples.value = Math.max(128, catalog.length + 100)
+    members.value = mergeMembersWithRecruited(catalog)
+    disciples.value = Math.max(128, members.value.length + 100)
     veinLevel.value = 2
     prestige.value = 100
     caveLevel.value = 1
     spiritDensity.value = 45
     cultivateBonus.value = 5
     gatherSpeed.value = 1.1
-    members.value = catalog.map((item) => ({ ...item }))
     visitTargetId.value = members.value[0]?.id || ''
     ensureDailyMissions()
   }
 
+  hydrateRecruited()
   hydrateMissions()
 
   return {
@@ -756,6 +864,7 @@ export const useSectStore = defineStore('sect', () => {
     claimMission,
     reportMissionProgress,
     advanceEscortPhase,
+    recruitMarketDisciples,
     resetOwnedTechniques,
     clearJoinedSect,
     applyJoinedSect

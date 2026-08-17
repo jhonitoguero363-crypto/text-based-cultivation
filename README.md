@@ -1,6 +1,12 @@
-# 青云修仙
+# 文字修仙
+
+<p align="center">
+  <img src="./src/assets/brand/logo.png" alt="文字修仙" width="220" />
+</p>
 
 文字修仙养成游戏 · Taro 4 + Vue3 + Pinia（微信小程序 / H5）
+
+项目 Logo：`src/assets/brand/logo.png`（常量 `src/constants/brand.ts`）
 
 ## 本地运行
 

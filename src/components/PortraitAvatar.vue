@@ -10,7 +10,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getPortraitIconUrl } from '../constants/portrait-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadPortraitIconUrl } from '../constants/portrait-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +22,7 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getPortraitIconUrl(props.name))
+const src = useAsyncIconSrc(() => props.name, loadPortraitIconUrl)
 const fallback = computed(
   () => props.fallbackChar || props.name.slice(0, 1) || '人'
 )

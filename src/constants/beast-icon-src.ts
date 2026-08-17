@@ -1,16 +1,12 @@
 import { BEAST_CATALOG } from './beast-catalog'
+import { buildLazyIconIndex } from '../utils/lazy-icon-index'
 import { BEAST_ICON_FILES, resolveBeastIconName } from './beast-icons'
 
-const modules = import.meta.glob('../assets/beasts/icons/*.png', {
-  eager: true,
-  import: 'default'
-}) as Record<string, string>
-
-const byFile: Record<string, string> = {}
-for (const [path, url] of Object.entries(modules)) {
-  const file = path.split('/').pop() || ''
-  if (file) byFile[file] = url
-}
+const index = buildLazyIconIndex(
+  import.meta.glob('../assets/beasts/icons/*.png', {
+    import: 'default'
+  }) as Record<string, () => Promise<string>>
+)
 
 const realmByName = new Map(BEAST_CATALOG.map((item) => [item.name, item.realm]))
 
@@ -18,14 +14,22 @@ export function getBeastRealm(name: string) {
   return realmByName.get(name)
 }
 
-/** 图鉴切片打包后的 URL，供 background-image 使用 */
-export function getBeastIconUrl(name: string, realm?: string): string {
+function fileOf(name: string, realm?: string) {
   const key = resolveBeastIconName(name, realm || realmByName.get(name))
   if (!key) return ''
-  const file = BEAST_ICON_FILES[key]
-  return file ? byFile[file] || '' : ''
+  return BEAST_ICON_FILES[key] || ''
 }
 
-export function hasBeastIcon(name: string) {
-  return Boolean(getBeastIconUrl(name))
+export function getBeastIconUrl(name: string, realm?: string): string {
+  const file = fileOf(name, realm)
+  return file ? index.getCached(file) : ''
+}
+
+export function loadBeastIconUrl(name: string, realm?: string) {
+  const file = fileOf(name, realm)
+  return file ? index.load(file) : Promise.resolve('')
+}
+
+export function hasBeastIcon(name: string, realm?: string) {
+  return Boolean(fileOf(name, realm))
 }

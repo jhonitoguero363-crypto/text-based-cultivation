@@ -7,8 +7,8 @@
           <text class="section-title__main">当前任务</text>
           <text class="section-title__sub">进行中</text>
         </view>
-        <text class="row-item__title">{{ sect.activeMission.name }}</text>
-        <text class="mission-item__line">{{ sect.activeMission.desc }}</text>
+        <text class="row-item__title">{{ missionName(sect.activeMission) }}</text>
+        <text class="mission-item__line">{{ missionDesc(sect.activeMission) }}</text>
         <text class="mission-item__line jade">
           条件 · {{ activeCondition }}
         </text>
@@ -31,10 +31,10 @@
           <view class="mission-item__main">
             <view class="mission-item__body">
               <view class="inline">
-                <text class="row-item__title">{{ item.name }}</text>
+                <text class="row-item__title">{{ missionName(item) }}</text>
                 <text class="tag" :class="tagClass(item.tagTone)">{{ item.tag }}</text>
               </view>
-              <text class="mission-item__line">{{ item.desc }}</text>
+              <text class="mission-item__line">{{ missionDesc(item) }}</text>
               <text v-if="item.objective" class="mission-item__line jade">
                 条件 · {{ conditionText(item) }}
               </text>
@@ -65,8 +65,10 @@ import {
 import {
   formatMissionConditionText,
   resolveEscortMembers,
+  resolveMoleMember,
   type DailyMission
 } from '../../constants/mission-catalog'
+import { localizeMissionText } from '../../constants/mission-localize'
 import { useSectStore } from '../../stores/sect'
 
 const sect = useSectStore()
@@ -76,15 +78,23 @@ const headerSub = computed(
 )
 
 const activeCondition = computed(() =>
-  formatMissionConditionText(sect.activeMission, sect.members)
+  formatMissionConditionText(sect.activeMission, sect.members, sect.sectId)
 )
 
 onMounted(() => {
   sect.ensureDailyMissions()
 })
 
+function missionName(item: DailyMission | null | undefined) {
+  return localizeMissionText(item?.name || '', sect.sectId)
+}
+
+function missionDesc(item: DailyMission | null | undefined) {
+  return localizeMissionText(item?.desc || '', sect.sectId)
+}
+
 function conditionText(item: DailyMission) {
-  return formatMissionConditionText(item, sect.members)
+  return formatMissionConditionText(item, sect.members, sect.sectId)
 }
 
 function tagClass(tone: string) {
@@ -121,9 +131,13 @@ function onAction(item: DailyMission) {
   if (!accepted) return toast('领取失败')
   const route = resolveEscortMembers(accepted, sect.members)
   if (route.pickupName && route.deliverName) {
-    return toast(`已领取：${accepted.name}｜${route.pickupName}→${route.deliverName}`)
+    return toast(`已领取：${missionName(accepted)}｜${route.pickupName}→${route.deliverName}`)
   }
-  toast(`已领取：${accepted.name}`)
+  const mole = resolveMoleMember(accepted, sect.members)
+  if (accepted.objective?.kind === 'find_mole' && mole.name) {
+    return toast(`已领取：${missionName(accepted)}｜卧底 · ${mole.name}`)
+  }
+  toast(`已领取：${missionName(accepted)}`)
 }
 </script>
 

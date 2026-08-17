@@ -11,6 +11,9 @@ export const INTIMACY_INVITE_ADVENTURE = 2
 /** 共同完成一次历练（结束时）每位同行亲密增量 */
 export const INTIMACY_SHARED_ADVENTURE = 5
 
+/** 退出宗门：对该宗人物亲密保留比例（大幅降低） */
+export const INTIMACY_LEAVE_SECT_KEEP_RATIO = 0.2
+
 export function clampIntimacy(value: number) {
   return Math.max(0, Math.min(INTIMACY_MAX, Math.floor(value)))
 }

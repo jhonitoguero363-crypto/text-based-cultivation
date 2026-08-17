@@ -144,3 +144,30 @@ export function getSectOption(id: SectId | string | null | undefined) {
 export function getSectTierRank(tier: SectTier | string | null | undefined) {
   return getSectTierDef(tier)?.rank || 0
 }
+
+/**
+ * 派系敌对：正道、魔门、妖族三者互为敌对。
+ * 同派系（如青云与万剑）不视为敌对。
+ */
+export function areFactionsHostile(
+  a: SectFaction | string | null | undefined,
+  b: SectFaction | string | null | undefined
+) {
+  if (!a || !b || a === b) return false
+  const known: SectFaction[] = ['正道', '魔门', '妖族']
+  return known.includes(a as SectFaction) && known.includes(b as SectFaction)
+}
+
+/** 当前宗门是否与任一已退出宗门敌对（叛出后入敌对派系） */
+export function isHostileToLeftSects(
+  currentSectId: string | null | undefined,
+  leftSectIds: Iterable<string> | null | undefined
+) {
+  const current = getSectOption(currentSectId)
+  if (!current) return false
+  for (const id of leftSectIds || []) {
+    const left = getSectOption(id)
+    if (left && areFactionsHostile(current.faction, left.faction)) return true
+  }
+  return false
+}

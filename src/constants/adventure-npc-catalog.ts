@@ -2,11 +2,15 @@ import type { RealmMajor } from './realm'
 import { REALM_MAJORS } from './realm'
 import { getRealmMajorIndex } from './treasure'
 import {
+  estimateCombatPowerByArchetype,
+  type CombatPowerArchetype
+} from './combat-power'
+import {
   getSectMembers,
   type CatalogMember,
   type MemberGroup
 } from './member-catalog'
-import { getSectOption, SECT_OPTIONS, type SectFaction, type SectId } from './sects'
+import { getSectOption, areFactionsHostile, SECT_OPTIONS, type SectFaction, type SectId } from './sects'
 
 /** 秘境偶遇含宗门弟子/正道/魔道/妖族/隐世/奇遇；坊市侧重商人/正道/魔道/散修 */
 export type AdventureNpcKind =
@@ -25,6 +29,29 @@ export type MarketNpcKind = (typeof MARKET_NPC_KINDS)[number]
 
 export function isDemonicNpcKind(kind: string | undefined | null) {
   return kind === '魔道修士' || kind === '魔修'
+}
+
+/** 历练人物类型对应的派系（用于敌对判定） */
+export function factionOfNpcKind(kind: string | undefined | null): SectFaction | null {
+  if (isDemonicNpcKind(kind)) return '魔门'
+  if (kind === '正道修士') return '正道'
+  if (kind === '妖族') return '妖族'
+  return null
+}
+
+/**
+ * 是否相对玩家宗门为敌对势力人物。
+ * 无宗时：魔道 / 妖族计为敌对。
+ */
+export function isHostileNpcToPlayer(
+  npcKind: string | undefined | null,
+  playerSectId: string | null | undefined
+) {
+  const npcFaction = factionOfNpcKind(npcKind)
+  if (!npcFaction) return false
+  const playerFaction = getSectOption(playerSectId)?.faction || null
+  if (!playerFaction) return npcFaction === '魔门' || npcFaction === '妖族'
+  return areFactionsHostile(playerFaction, npcFaction)
 }
 
 export function normalizeAdventureNpcKind(kind: string | undefined | null): AdventureNpcKind {
@@ -713,20 +740,31 @@ function pickUnique(pool: AdventureNpc[], count: number): AdventureNpc[] {
   return result
 }
 
-/** 由境界估算展示战力（拜访 / 同行用） */
-export function estimateNpcPower(realm: RealmMajor, seed = '') {
-  const idx = Math.max(0, getRealmMajorIndex(realm))
-  let hash = 0
-  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) % 997
-  return 120 + idx * 220 + (hash % 180)
+/** 历练人物类型 → 战力档位（无明确剑修/异灵根标记时按派系） */
+export function combatArchetypeFromNpcKind(
+  kind: AdventureNpcKind | string | undefined | null
+): CombatPowerArchetype {
+  if (kind === '妖族') return 'yaozu'
+  if (isDemonicNpcKind(kind)) return 'demon'
+  return 'righteous'
 }
 
-/** 估算人物战斗战力（与玩家战力同量级，用于出战灵兽阵亡判定） */
-export function estimateNpcBattlePower(realm: RealmMajor, seed = '') {
-  const idx = Math.max(0, getRealmMajorIndex(realm))
-  let hash = 0
-  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) % 997
-  return 700 + idx * 1050 + (hash % 280)
+/** 由境界估算展示 / 对战战力（与战斗结算同量级，不再打折） */
+export function estimateNpcPower(
+  realm: RealmMajor,
+  seed = '',
+  archetype: CombatPowerArchetype = 'righteous'
+) {
+  return estimateCombatPowerByArchetype(realm, archetype, seed)
+}
+
+/** 估算人物战斗战力（与玩家 / 名录同量级） */
+export function estimateNpcBattlePower(
+  realm: RealmMajor,
+  seed = '',
+  archetype: CombatPowerArchetype = 'righteous'
+) {
+  return estimateCombatPowerByArchetype(realm, archetype, seed)
 }
 
 /** 从宗门人物境界文案解析大境界 */
@@ -997,13 +1035,42 @@ export function rollEncounterNpcs(
   return pickUnique(pool, count).map(normalizeAdventureNpc)
 }
 
-/** 任务「清剿魔修」：优先其他宗门魔门人物 */
+/** 任务「清剿敌对势力」：优先塞入一名相对玩家派系的敌对人物（正道/魔门/妖族互为敌对） */
+export function pickHostileEncounterNpc(
+  locationRealm: RealmMajor,
+  playerSectId: string | null | undefined = null
+): AdventureNpc | null {
+  const faction = playerSectId ? getSectOption(playerSectId)?.faction : null
+  const pool: AdventureNpc[] = []
+  if (faction !== '正道') {
+    pool.push(...factionMembersAsNpcs('正道', '正道修士', locationRealm, playerSectId))
+  }
+  if (faction !== '魔门') {
+    pool.push(...factionMembersAsNpcs('魔门', '魔道修士', locationRealm, playerSectId))
+  }
+  if (faction !== '妖族') {
+    pool.push(...factionMembersAsNpcs('妖族', '妖族', locationRealm, playerSectId))
+  }
+  // 无宗：与 isHostileNpcToPlayer 一致，不计正道
+  const candidates = faction
+    ? pool
+    : pool.filter((n) => n.kind === '魔道修士' || n.kind === '妖族')
+  if (candidates.length) return pickOne(candidates)
+
+  const catalogHostile = ADVENTURE_NPC_CATALOG.filter((n) =>
+    isHostileNpcToPlayer(n.kind, playerSectId)
+  )
+  return pickOne(
+    catalogHostile.length
+      ? catalogHostile
+      : ADVENTURE_NPC_CATALOG.filter((n) => n.kind === '魔道修士' || n.kind === '妖族')
+  )
+}
+
+/** @deprecated 使用 pickHostileEncounterNpc */
 export function pickDemonicEncounterNpc(
   locationRealm: RealmMajor,
   playerSectId: string | null | undefined = null
 ): AdventureNpc | null {
-  const fromSect = factionMembersAsNpcs('魔门', '魔道修士', locationRealm, playerSectId)
-  if (fromSect.length) return pickOne(fromSect)
-  const catalog = ADVENTURE_NPC_CATALOG.filter((n) => n.kind === '魔道修士')
-  return pickOne(catalog)
+  return pickHostileEncounterNpc(locationRealm, playerSectId)
 }

@@ -29,10 +29,6 @@
             <text class="stat-bar__label">战力</text>
           </view>
         </view>
-        <text class="stat-bar__hint">
-          本体 {{ player.power.toLocaleString() }}
-          <text v-if="treasureBonus > 0"> · 法宝 +{{ treasureBonus.toLocaleString() }}</text>
-        </text>
       </view>
 
       <view class="panel">
@@ -127,18 +123,50 @@
           <text class="section-title__sub" @tap="goTech">功法阁 ›</text>
         </view>
         <view v-if="!activeTech" class="empty-tip">尚未修习功法（同时仅一门）</view>
-        <view v-else class="row-item row-item--compact">
-          <TechniqueIcon :name="activeTech.name" size="md" />
+        <view v-else class="row-item">
+          <TechniqueIcon :name="activeTech.name" size="sm" />
           <view class="row-item__body">
             <text class="row-item__title">{{ activeTech.name }}</text>
             <text class="row-item__desc">
-              {{ activeTech.grade }} · {{ activeTech.school }} · {{ activeTech.effect }}
+              {{ activeTech.grade }} · {{ activeTech.attr || activeTech.type }} · {{ activeTech.school }}
             </text>
+            <text class="row-item__desc">{{ loreText(activeTech.effect) }}</text>
           </view>
           <text class="side-meta gold">修习中</text>
         </view>
         <view v-if="ownedTechs.length > 1" class="owned-note">
           另有 {{ ownedTechs.length - 1 }} 部已收录，可在功法阁改修
+        </view>
+      </view>
+
+      <view class="panel spell-battle-panel">
+        <view class="section-title">
+          <text class="section-title__main">出战法术</text>
+          <text class="section-title__sub">最多 {{ battleSpellMax }} 门 · 点按切换</text>
+        </view>
+        <text class="owned-note">
+          出战法术计入战力；未手动选择时按熟练自动取前 {{ battleSpellMax }} 门。炼丹/炼器不可出战。
+        </text>
+        <view v-if="!combatSpells.length" class="empty-tip">暂无战斗法术可出战</view>
+        <view
+          v-for="item in combatSpells"
+          :key="item.id"
+          class="row-item"
+          @tap="onToggleBattleSpell(item.name)"
+        >
+          <SpellIcon :name="item.name" :fallback-char="item.name.slice(0, 1)" size="sm" />
+          <view class="row-item__body">
+            <view class="inline">
+              <text class="row-item__title">{{ item.name }}</text>
+              <text v-if="player.isBattleSpell(item.name)" class="tag tag--jade">出战</text>
+            </view>
+            <text class="row-item__desc">
+              {{ item.grade }} · {{ item.attr }} · {{ item.proficiencyName || '初窥门径' }}
+            </text>
+          </view>
+          <text class="side-meta" :class="{ gold: player.isBattleSpell(item.name) }">
+            {{ player.isBattleSpell(item.name) ? '出战中' : '点选出战' }}
+          </text>
         </view>
       </view>
 
@@ -148,8 +176,8 @@
           <text class="section-title__sub">{{ learnedSpells.length }} 门</text>
         </view>
         <view v-if="!learnedSpells.length" class="empty-tip">尚未修习法术（可同时多门）</view>
-        <view v-for="item in learnedSpells" :key="item.id" class="row-item row-item--compact">
-          <SpellIcon :name="item.name" :fallback-char="item.name.slice(0, 1)" size="md" />
+        <view v-for="item in learnedSpells" :key="item.id" class="row-item">
+          <SpellIcon :name="item.name" :fallback-char="item.name.slice(0, 1)" size="sm" />
           <view class="row-item__body">
             <view class="inline">
               <text class="row-item__title">{{ item.name }}</text>
@@ -158,7 +186,7 @@
             <text class="row-item__desc">
               {{ item.grade }} · {{ item.attr }} · {{ item.proficiencyLabel || '0/99' }}
             </text>
-            <text class="row-item__desc">{{ item.proficiencyEffect || item.effect }}</text>
+            <text class="row-item__desc">{{ loreText(item.proficiencyEffect || item.effect) }}</text>
           </view>
         </view>
       </view>
@@ -175,6 +203,8 @@ import RootRadarChart from '../../components/RootRadarChart.vue'
 import SpellIcon from '../../components/SpellIcon.vue'
 import TechniqueIcon from '../../components/TechniqueIcon.vue'
 import TreasureIcon from '../../components/TreasureIcon.vue'
+import { BATTLE_SPELL_SLOT_MAX, isCombatSpellName } from '../../constants/combat-power'
+import { alignCombatLoreText } from '../../constants/adventure-battle'
 import {
   TREASURE_SLOTS,
   canWieldTreasureGrade,
@@ -191,12 +221,23 @@ const sect = useSectStore()
 const treasure = useTreasureStore()
 
 const treasureSlots = TREASURE_SLOTS
+const battleSpellMax = BATTLE_SPELL_SLOT_MAX
 const switchingSlot = ref<TreasureSlot | null>(null)
-const treasureBonus = computed(() => treasure.equippedPowerBonus)
 const activeTech = computed(() => sect.activeTechnique)
 const ownedTechs = computed(() => sect.techniques.filter((item) => item.owned))
 const learnedSpells = computed(() => sect.spells.filter((item) => item.owned))
+const combatSpells = computed(() =>
+  learnedSpells.value.filter((item) => isCombatSpellName(item.name))
+)
 const visibleRoots = computed(() => visibleRootBones(player.roots))
+
+function onToggleBattleSpell(name: string) {
+  const wasOn = player.isBattleSpell(name)
+  if (!player.toggleBattleSpell(name)) {
+    return toast(wasOn ? '取消失败' : `出战位已满（${battleSpellMax}）`)
+  }
+  toast(wasOn ? `已取消《${name}》出战` : `已令《${name}》出战`)
+}
 
 function slotItem(slot: TreasureSlot) {
   return treasure.getEquippedInSlot(slot)
@@ -221,6 +262,10 @@ function canWield(grade: TreasureGrade | string) {
 
 function toast(title: string) {
   Taro.showToast({ title, icon: 'none' })
+}
+
+function loreText(text: string) {
+  return alignCombatLoreText(text)
 }
 
 function toggleSlot(slot: TreasureSlot) {
@@ -363,17 +408,12 @@ function goTech() {
   letter-spacing: 0.08em;
 }
 
-.stat-bar__hint {
-  display: block;
-  margin-top: 6px;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.3;
-}
-
 .detail-page .section-title {
   margin-bottom: 10px;
+}
+
+.spell-battle-panel .section-title {
+  margin-bottom: 4px;
 }
 
 .equip-slot {
@@ -462,19 +502,29 @@ function goTech() {
 }
 
 .row-item--compact {
-  padding: 8px 10px;
+  padding: 6px 8px;
+}
+
+.spell-battle-panel .owned-note {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 10px;
+  line-height: 1.25;
 }
 
 .side-meta {
   flex-shrink: 0;
-  font-size: 11px;
+  align-self: center;
+  font-size: 10px;
+  line-height: 1.25;
 }
 
 .owned-note {
-  margin-top: 6px;
-  font-size: 11px;
+  display: block;
+  margin: 4px 0 0;
+  font-size: 10px;
   color: var(--text-muted);
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .inline {

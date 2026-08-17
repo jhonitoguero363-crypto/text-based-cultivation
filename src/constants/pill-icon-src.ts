@@ -1,24 +1,29 @@
+import { buildLazyIconIndex } from '../utils/lazy-icon-index'
 import { PILL_ICON_FILES, resolvePillIconName } from './pill-icons'
 
-const modules = import.meta.glob('../assets/pills/icons/*.png', {
-  eager: true,
-  import: 'default'
-}) as Record<string, string>
+const index = buildLazyIconIndex(
+  import.meta.glob('../assets/pills/icons/*.png', {
+    import: 'default'
+  }) as Record<string, () => Promise<string>>
+)
 
-const byFile: Record<string, string> = {}
-for (const [path, url] of Object.entries(modules)) {
-  const file = path.split('/').pop() || ''
-  if (file) byFile[file] = url
-}
-
-/** 图鉴切片打包后的 URL，供 background-image 使用 */
-export function getPillIconUrl(name: string): string {
+function fileOf(name: string) {
   const key = resolvePillIconName(name)
   if (!key) return ''
-  const file = PILL_ICON_FILES[key]
-  return file ? byFile[file] || '' : ''
+  return PILL_ICON_FILES[key] || ''
+}
+
+/** 仅已缓存；组件请用 loadPillIconUrl */
+export function getPillIconUrl(name: string): string {
+  const file = fileOf(name)
+  return file ? index.getCached(file) : ''
+}
+
+export function loadPillIconUrl(name: string) {
+  const file = fileOf(name)
+  return file ? index.load(file) : Promise.resolve('')
 }
 
 export function hasPillIcon(name: string) {
-  return Boolean(getPillIconUrl(name))
+  return Boolean(fileOf(name))
 }

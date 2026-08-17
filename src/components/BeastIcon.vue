@@ -9,8 +9,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { getBeastIconUrl } from '../constants/beast-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadBeastIconUrl } from '../constants/beast-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +21,13 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getBeastIconUrl(props.name, props.realm))
+const src = useAsyncIconSrc(
+  () => `${props.name}::${props.realm || ''}`,
+  (key) => {
+    const [name, realm] = key.split('::')
+    return loadBeastIconUrl(name, realm || undefined)
+  }
+)
 </script>
 
 <style lang="scss">

@@ -33,21 +33,21 @@ export const SECT_LANDMARK_FACILITIES: Record<SectId, SectFacility> = {
   tianmo: {
     key: 'demon_den',
     name: '魔窟',
-    desc: '魔气炼体 · 待开放',
+    desc: '魔气杀伐',
     icon: '🕳️',
     path: '/pages/sect/demon-den'
   },
   wanjian: {
     key: 'sword_tomb',
     name: '剑冢',
-    desc: '剑意沉眠 · 待开放',
+    desc: '问剑悟道',
     icon: '⚔️',
     path: '/pages/sect/sword-tomb'
   },
   yaozu: {
     key: 'ancestor_pool',
     name: '返祖池',
-    desc: '血脉回溯 · 待开放',
+    desc: '首次涨根骨 · 其后修为',
     icon: '🌀',
     path: '/pages/sect/ancestor-pool'
   }

@@ -68,10 +68,10 @@
             <view class="tech-card__body">
               <view class="tech-card__top">
                 <text class="tech-card__name">{{ item.name }}</text>
-                <text class="tech-card__school">{{ item.school }}</text>
+                <text class="tech-card__school">{{ item.attr || item.type }}</text>
               </view>
               <text class="tech-card__meta">
-                {{ item.grade }} · {{ item.realmLabel }}
+                {{ item.grade }} · {{ item.school }} · {{ item.realmLabel }}
                 {{ item.owned && item.proficiencyName ? ` · ${item.proficiencyName}` : '' }}
               </text>
             </view>
@@ -113,7 +113,7 @@
                 {{ item.owned && item.proficiencyName ? ` · ${item.proficiencyName}` : ` · ${item.realm}` }}
               </text>
               <text class="tech-card__effect">
-                {{ item.owned ? item.proficiencyEffect || item.effect : item.effect }}
+                {{ loreText(item.owned ? item.proficiencyEffect || item.effect : item.effect) }}
               </text>
             </view>
             <view class="tech-card__side">
@@ -148,7 +148,7 @@
             <view class="tech-sheet__tags">
               <text class="tag" :class="`tag--tier-${tierKey(activeTech.gradeTier)}`">{{ activeTech.grade }}</text>
               <text class="tag tag--gold">{{ activeTech.school }}</text>
-              <text class="tag tag--jade">{{ activeTech.type }}</text>
+              <text class="tag tag--jade">{{ activeTech.attr || activeTech.type }}</text>
               <text v-if="activeTech.active" class="tag tag--mp">修习中</text>
             </view>
           </view>
@@ -156,7 +156,7 @@
 
         <view class="tech-sheet__block">
           <text class="tech-sheet__k">功法效果</text>
-          <text class="tech-sheet__v gold">{{ activeTech.effect }}</text>
+          <text class="tech-sheet__v gold">{{ loreText(activeTech.effect) }}</text>
         </view>
         <view v-if="activeTech.owned" class="tech-sheet__block">
           <text class="tech-sheet__k">熟练度</text>
@@ -232,7 +232,7 @@
 
         <view class="tech-sheet__block">
           <text class="tech-sheet__k">法术效果</text>
-          <text class="tech-sheet__v gold">{{ activeSpell.effect }}</text>
+          <text class="tech-sheet__v gold">{{ loreText(activeSpell.effect) }}</text>
         </view>
         <view v-if="activeSpell.owned" class="tech-sheet__block">
           <text class="tech-sheet__k">熟练度</text>
@@ -285,6 +285,7 @@ import TechniqueIcon from '../../components/TechniqueIcon.vue'
 import SpellIcon from '../../components/SpellIcon.vue'
 import type { RealmMajor } from '../../constants/realm'
 import { canLearnSpell } from '../../constants/spell-catalog'
+import { alignCombatLoreText } from '../../constants/adventure-battle'
 import {
   calcTechniqueSwitchExpLoss,
   canLearnTechnique,
@@ -513,6 +514,10 @@ function exchangeSpell(item: SectSpell) {
 function toast(title: string) {
   Taro.showToast({ title, icon: 'none' })
 }
+
+function loreText(text: string) {
+  return alignCombatLoreText(text)
+}
 </script>
 
 <style lang="scss">
@@ -625,9 +630,9 @@ function toast(title: string) {
 
 .tech-card {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 8px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
   margin: 0 -4px;
   border-radius: 10px;
   border: 1px solid transparent;
@@ -738,6 +743,7 @@ function toast(title: string) {
 }
 .tech-card__top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -746,9 +752,9 @@ function toast(title: string) {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .tech-card__school {
   flex-shrink: 0;
@@ -761,18 +767,21 @@ function toast(title: string) {
 }
 .tech-card__meta {
   display: block;
-  margin-top: 3px;
+  margin-top: 1px;
   font-size: 10px;
   color: var(--text-muted);
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .tech-card__effect {
   display: block;
-  margin-top: 3px;
+  margin-top: 1px;
   font-size: 11px;
   color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .tech-card__side {
@@ -782,6 +791,7 @@ function toast(title: string) {
   gap: 4px;
   flex-shrink: 0;
   min-width: 44px;
+  align-self: center;
 }
 .tech-card__cost {
   font-size: 12px;

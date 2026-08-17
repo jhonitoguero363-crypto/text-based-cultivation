@@ -52,6 +52,10 @@
           <text class="info-label">专长</text>
           <text class="info-val">{{ member.specialty || '未知' }}</text>
         </view>
+        <view v-if="member.rootBone" class="info-row">
+          <text class="info-label">根骨</text>
+          <text class="info-val gold">{{ member.rootBone }}</text>
+        </view>
         <view v-if="member.note && member.source !== 'market'" class="info-row">
           <text class="info-label">隐情</text>
           <text class="info-val jade">{{ member.note }}</text>
@@ -60,6 +64,14 @@
           <text class="info-label">事件</text>
           <text class="info-val gold market-event">{{ member.specialty }}</text>
         </view>
+      </view>
+
+      <view v-if="moleHint" class="panel mole-panel">
+        <view class="section-title">
+          <text class="section-title__main">卧底提示</text>
+          <text class="section-title__sub">举止反常</text>
+        </view>
+        <text class="mole-panel__text">{{ moleHint }}</text>
       </view>
 
       <view class="panel">
@@ -86,6 +98,11 @@
           <view class="mer-card__art">
             <HerbIcon v-if="item.materialKind === 'herb'" :name="item.name" size="md" />
             <OreIcon v-else-if="item.materialKind === 'ore'" :name="item.name" size="md" />
+            <LootMaterialIcon
+              v-else-if="item.materialKind === 'loot' || item.category === '材料'"
+              :name="item.name"
+              size="md"
+            />
             <PillIcon v-else-if="item.category === '丹药'" :name="item.name" size="md" />
             <TechniqueIcon v-else-if="item.category === '功法'" :name="item.name" size="md" />
             <TreasureIcon
@@ -130,6 +147,7 @@ import { computed } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import PageHeader from '../../components/PageHeader.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
+import LootMaterialIcon from '../../components/LootMaterialIcon.vue'
 import OreIcon from '../../components/OreIcon.vue'
 import PillIcon from '../../components/PillIcon.vue'
 import PlayerAvatar from '../../components/PlayerAvatar.vue'
@@ -137,6 +155,7 @@ import PortraitAvatar from '../../components/PortraitAvatar.vue'
 import TechniqueIcon from '../../components/TechniqueIcon.vue'
 import TreasureIcon from '../../components/TreasureIcon.vue'
 import {
+  combatArchetypeFromNpcKind,
   estimateNpcPower,
   type AdventureNpc
 } from '../../constants/adventure-npc-catalog'
@@ -145,14 +164,19 @@ import { memberGroupFromTitle, type MemberGroup } from '../../constants/member-c
 import {
   formatMissionConditionText,
   isEscortMissionKind,
-  resolveEscortMembers
+  resolveEscortMembers,
+  resolveMoleMember,
+  rollMoleTalkLine
 } from '../../constants/mission-catalog'
 import { inferCharacterGender } from '../../constants/default-avatar-src'
 import {
-  battleWinChanceByPowerGap,
+  buildBattlePreview,
+  enemyAttrFromNpcKind,
+  formatBattleFlavor,
   rollBattleOutcome,
   rollPlayerBattleFate
 } from '../../constants/adventure-battle'
+import { formatLifesavePreviewLine } from '../../constants/pill-system'
 import {
   formatCliffSentenceLabel,
   formatDurationMs,
@@ -162,6 +186,7 @@ import {
 import { getRealmPracticeExpBase } from '../../constants/realm-exp'
 import { rollSparOutcome } from '../../constants/spar'
 import { DUAL_CULTIVATION_INTIMACY_MIN, formatIntimacy, INTIMACY_GIFT, INTIMACY_INVITE_ADVENTURE } from '../../constants/intimacy'
+import { getSectOption } from '../../constants/sects'
 import type { TreasureGrade } from '../../constants/treasure'
 import { ADVENTURE_COMPANION_MAX, useAdventureStore } from '../../stores/adventure'
 import { usePlayerStore } from '../../stores/player'
@@ -177,6 +202,14 @@ const sect = useSectStore()
 const player = usePlayerStore()
 const adventure = useAdventureStore()
 const treasure = useTreasureStore()
+
+function foeCombatAttr(target: VisitMember) {
+  if (target.source === 'market') return enemyAttrFromNpcKind(target.kind)
+  const faction = getSectOption(target.sectId)?.faction
+  if (faction === '妖族') return '木'
+  if (faction === '魔门') return '火'
+  return '金'
+}
 
 const selfMember = computed<VisitMember>(() => {
   const rank = player.rank || '外门弟子'
@@ -206,7 +239,7 @@ function mapMarketNpc(npc: AdventureNpc): VisitMember {
     name: npc.name,
     title: npc.title,
     realm: npc.realm,
-    power: estimateNpcPower(npc.realm, npc.id),
+    power: estimateNpcPower(npc.realm, npc.id, combatArchetypeFromNpcKind(npc.kind)),
     avatar: npc.avatar || npc.name.slice(0, 1),
     tone: 'jade',
     group: '外门弟子' as MemberGroup,
@@ -252,6 +285,23 @@ const isMerchant = computed(
   () => member.value?.source === 'market' && member.value.kind === '商人'
 )
 
+const moleTarget = computed(() => {
+  const mission = sect.activeMission
+  if (!mission || mission.objective?.kind !== 'find_mole') return null
+  const target = member.value
+  if (!target || target.self || target.source === 'market') return null
+  const mole = resolveMoleMember(mission, sect.members)
+  if (!mole.id || target.id !== mole.id) return null
+  return { mission, mole }
+})
+
+const moleHint = computed(() => {
+  if (!moleTarget.value) return ''
+  const done = (moleTarget.value.mission.progress || 0) >= (moleTarget.value.mission.objective?.target || 1)
+  if (done) return '此人已承认卧底身份，可回角色页完成任务。'
+  return '此人气息驳杂、言辞闪烁，极可能是潜入本宗的卧底。可与其交谈拆穿。'
+})
+
 const merchantOffers = computed(() => {
   if (!isMerchant.value || !member.value) return [] as MarketOffer[]
   return adventure.getMerchantOffers(member.value.id)
@@ -260,7 +310,7 @@ const merchantOffers = computed(() => {
 const actions = computed(() => {
   const list = [
     { title: '邀请历练', desc: '结伴探索秘境；邀请与同行结束均可增亲密' },
-    { title: '切磋比武', desc: '点到为止，印证所学' },
+    { title: '切磋比武', desc: '点到为止；可负，任务仍算' },
     {
       title: '生死比斗',
       desc: '胜则尽夺对方资源，败则伤或陨'
@@ -273,7 +323,7 @@ const actions = computed(() => {
   const kind = mission?.objective?.kind
   if (isEscortMissionKind(kind)) {
     const route = resolveEscortMembers(mission, sect.members)
-    let desc = formatMissionConditionText(mission, sect.members)
+    let desc = formatMissionConditionText(mission, sect.members, sect.sectId)
     if (route.pickupName && route.deliverName) {
       if (route.phase === 'none') {
         desc = target?.id === route.pickupId
@@ -294,6 +344,14 @@ const actions = computed(() => {
   }
   if (kind === 'rescue_talk' && target && !target.self) {
     list.unshift({ title: '营救交谈', desc: '安抚被困弟子' })
+  }
+  if (moleTarget.value) {
+    const done =
+      (moleTarget.value.mission.progress || 0) >= (moleTarget.value.mission.objective?.target || 1)
+    list.unshift({
+      title: '卧底交谈',
+      desc: done ? '已拆穿，可回角色页完成' : '质问对方，拆穿卧底身份'
+    })
   }
   if (!target || target.self) {
     return list.filter(
@@ -341,16 +399,35 @@ function actionNote(action: { title: string; desc: string }) {
   return ''
 }
 
-function handleDeathDuelDefeat(enemyName: string, enemyPower: number) {
+function handleDeathDuelDefeat(
+  enemyName: string,
+  enemyPower: number,
+  opts?: { elementLabel?: string; winChance?: number }
+) {
   const myPower = player.combatPower
   const { fate, deathChance, injuryChance } = rollPlayerBattleFate(myPower, enemyPower)
   const deathPct = Math.round(deathChance * 100)
   const injuryPct = Math.round(injuryChance * 100)
+  const flavor = formatBattleFlavor({
+    won: false,
+    enemyName,
+    scene: 'duel',
+    elementLabel: opts?.elementLabel,
+    fate,
+    winChance: opts?.winChance
+  })
   if (fate === 'death') {
+    const saved = player.tryConsumeLifesave()
+    if (saved.ok) {
+      const pillLabel = saved.pillName || '保命丹'
+      const stateTip = saved.injured ? '重伤未愈，需疗伤' : '伤势无碍'
+      toast(`${pillLabel}生效，逃过身死（${stateTip}）`)
+      return
+    }
     player.persist()
     Taro.showModal({
       title: '身死道消',
-      content: `你败于「${enemyName}」的生死比斗，此世修为尽散（阵亡风险约 ${deathPct}%）。是否重新开辟道途？`,
+      content: `${flavor}\n此世修为尽散（阵亡风险约 ${deathPct}%）。是否重新开辟道途？`,
       confirmText: '重新开始',
       showCancel: false,
       success: () => {
@@ -363,9 +440,16 @@ function handleDeathDuelDefeat(enemyName: string, enemyPower: number) {
   if (fate === 'injury') {
     player.setInjured(true)
     player.persist()
-    return toast(`死斗落败，身受重伤（约 ${injuryPct}%），需丹药疗伤`)
+    return toast(`${flavor}（约 ${injuryPct}%）`)
   }
-  toast('死斗落败，侥幸脱身')
+  toast(flavor)
+}
+
+function lifesaveLine() {
+  return formatLifesavePreviewLine({
+    bagNames: player.bag.filter((item) => item.category === '丹药').map((item) => item.name),
+    charges: player.lifesaveCharges
+  })
 }
 
 function startDeathDuel() {
@@ -375,20 +459,43 @@ function startDeathDuel() {
   if (player.injured) return toast('伤势未愈，不宜死斗')
   if (player.onCliff) return toast('思过崖面壁期间不可动手')
 
-  const winPct = Math.round(battleWinChanceByPowerGap(player.combatPower, target.power) * 100)
+  const preview = buildBattlePreview({
+    myPower: player.combatPower,
+    enemyPower: target.power,
+    enemyName: target.name,
+    myAttrs: player.battleSpellAttrs(),
+    enemyAttr: foeCombatAttr(target),
+    titleHint: `与「${target.name}」（${target.group}）约死斗。`,
+    showRisk: true,
+    lifesaveLine: lifesaveLine()
+  })
   const sentence = formatCliffSentenceLabel(target.group)
   Taro.showModal({
     title: '生死比斗',
-    content: `与「${target.name}」（${target.group}）约死斗。\n胜率约 ${winPct}%\n胜：尽夺对方资源，并入思过崖面壁 ${sentence}\n败：重伤或身死道消\n是否开启？`,
+    content: `${preview.content}\n胜：尽夺对方资源，并入思过崖面壁 ${sentence}\n败：重伤或身死道消\n是否开启？`,
     confirmText: '死斗',
     confirmColor: '#c45c5c',
     success: (res) => {
       if (!res.confirm) return
-      const outcome = rollBattleOutcome(player.combatPower, target.power)
+      const outcome = rollBattleOutcome(player.combatPower, target.power, {
+        elementMod: preview.elementMod
+      })
       if (!outcome.won) {
-        handleDeathDuelDefeat(target.name, target.power)
+        handleDeathDuelDefeat(target.name, target.power, {
+          elementLabel: preview.elementLabel,
+          winChance: outcome.winChance
+        })
         return
       }
+      const castSpell = player.resolveBattleSpellNames()[0] || ''
+      const flavor = formatBattleFlavor({
+        won: true,
+        enemyName: target.name,
+        scene: 'duel',
+        castSpell,
+        elementLabel: preview.elementLabel,
+        winChance: outcome.winChance
+      })
       const loot = rollDeathDuelLoot({ group: target.group, realm: String(target.realm) })
       player.applyDeathDuelLoot(loot)
       player.startCliffPunishment({
@@ -401,7 +508,7 @@ function startDeathDuel() {
       const summary = summarizeDeathDuelLoot(loot)
       Taro.showModal({
         title: '死斗胜',
-        content: `你击败「${target.name}」，尽夺其资源：\n${summary}\n\n执法堂已将你押往思过崖，面壁 ${sentence}（剩余 ${formatDurationMs(player.cliffRemainMs)}）。`,
+        content: `${flavor}\n尽夺其资源：\n${summary}\n\n执法堂已将你押往思过崖，面壁 ${sentence}（剩余 ${formatDurationMs(player.cliffRemainMs)}）。`,
         confirmText: '前往思过崖',
         cancelText: '稍后',
         success: (nav) => {
@@ -504,33 +611,79 @@ function onAction(title: string) {
   if (title === '切磋比武') {
     if (!member.value || member.value.self) return toast('不可与自己切磋')
     if (player.injured) return toast('伤势未愈，不宜切磋')
-    sect.reportMissionProgress('spar', 1)
-    const next = player.addIntimacy(member.value.id, 2, member.value.attitude)
+    if (player.onCliff) return toast('思过崖面壁期间不可动手')
 
-    const spellNames = player.bag
-      .filter((item) => item.category === '法术')
-      .map((item) => item.name)
-    const outcome = rollSparOutcome(spellNames, getRealmPracticeExpBase(player.realmState))
-    const parts: string[] = [`与${member.value.name}切磋获胜`, `亲密 ${formatIntimacy(next)}`]
+    const foe = member.value
+    const enemyPower = Math.max(1, foe.power || 1)
+    const preview = buildBattlePreview({
+      myPower: player.combatPower,
+      enemyPower,
+      enemyName: foe.name,
+      myAttrs: player.battleSpellAttrs(),
+      enemyAttr: foeCombatAttr(foe),
+      titleHint: '点到为止，低风险切磋。'
+    })
 
-    if (outcome.spellName && outcome.spellProfGain > 0) {
-      const result = player.addSpellProficiency(outcome.spellName, outcome.spellProfGain)
-      sect.applySpellProficiency(player.spellProficiency)
-      parts.push(`《${outcome.spellName}》熟练 +${result.gain}`)
-      if (result.tierUp) parts.push(`进境：${result.name}`)
-    }
-    if (outcome.expGain > 0 && player.exp < player.expMax) {
-      const before = player.exp
-      player.addExp(outcome.expGain)
-      const actual = Math.round((player.exp - before) * 10) / 10
-      if (actual > 0) parts.push(`修为 +${actual}`)
-    }
-    if (outcome.injured) {
-      player.setInjured(true)
-      parts.push('不慎受伤，战力暂减')
-    }
-    player.persist()
-    return toast(parts.join(' · '))
+    Taro.showModal({
+      title: '切磋比武',
+      content: `${preview.content}\n胜：亲密+2，或涨法术熟练/修为\n负：亲密不变；约 4% 受伤`,
+      confirmText: '切磋',
+      success: (res) => {
+        if (!res.confirm) return
+        const battle = rollBattleOutcome(player.combatPower, enemyPower, {
+          elementMod: preview.elementMod
+        })
+        const spellNames = player.resolveBattleSpellNames()
+        const ownedFallback = player.bag
+          .filter((item) => item.category === '法术')
+          .map((item) => item.name)
+        const pool = spellNames.length ? spellNames : ownedFallback
+        const outcome = rollSparOutcome(
+          battle.won,
+          pool,
+          getRealmPracticeExpBase(player.realmState)
+        )
+
+        sect.reportMissionProgress('spar', 1)
+
+        const flavor = formatBattleFlavor({
+          won: battle.won,
+          enemyName: foe.name,
+          scene: 'spar',
+          castSpell: outcome.spellName || pool[0] || '',
+          elementLabel: preview.elementLabel,
+          winChance: battle.winChance
+        })
+        const parts: string[] = [flavor]
+
+        if (battle.won) {
+          const next = player.addIntimacy(foe.id, 2, foe.attitude)
+          parts.push(`亲密 ${formatIntimacy(next)}`)
+        } else {
+          parts.push('亲密未变')
+        }
+
+        if (outcome.spellName && outcome.spellProfGain > 0) {
+          const result = player.addSpellProficiency(outcome.spellName, outcome.spellProfGain)
+          sect.applySpellProficiency(player.spellProficiency)
+          parts.push(`《${outcome.spellName}》熟练 +${result.gain}`)
+          if (result.tierUp) parts.push(`进境：${result.name}`)
+        }
+        if (outcome.expGain > 0 && player.exp < player.expMax) {
+          const before = player.exp
+          player.addExp(outcome.expGain)
+          const actual = Math.round((player.exp - before) * 10) / 10
+          if (actual > 0) parts.push(`修为 +${actual}`)
+        }
+        if (outcome.injured) {
+          player.setInjured(true)
+          parts.push('不慎受伤，战力暂减')
+        }
+        player.persist()
+        toast(parts.join(' · '))
+      }
+    })
+    return
   }
   if (title === '生死比斗') {
     return startDeathDuel()
@@ -560,6 +713,9 @@ function onAction(title: string) {
       return toast(`已安抚 · 亲密 ${formatIntimacy(next)}`)
     }
     return toast('已安抚被困弟子，任务进度已更新')
+  }
+  if (title === '卧底交谈') {
+    return handleMoleTalk()
   }
   if (title === '邀请双修') {
     const target = member.value
@@ -608,6 +764,29 @@ function handleEscortTalk() {
   }
   return toast('该任务已送达')
 }
+
+function handleMoleTalk() {
+  const info = moleTarget.value
+  const target = member.value
+  if (!info || !target || target.self) return toast('此处并非目标卧底')
+  const { mission, mole } = info
+  const done = (mission.progress || 0) >= (mission.objective?.target || 1)
+  if (done) return toast('已拆穿此人，可回角色页完成任务')
+
+  const content = rollMoleTalkLine(mole.name || target.name)
+  Taro.showModal({
+    title: '卧底交谈',
+    content,
+    showCancel: false,
+    confirmText: '已知晓',
+    success: () => {
+      sect.reportMissionProgress('find_mole', 1)
+      const next = player.addIntimacy(target.id, 3, target.attitude)
+      player.persist()
+      toast(`已拆穿卧底 · 亲密 ${formatIntimacy(next)}`)
+    }
+  })
+}
 </script>
 
 <style lang="scss">
@@ -620,6 +799,12 @@ function handleEscortTalk() {
 .muted { color: var(--text-muted); }
 .hp { color: var(--hp); }
 .jade { color: var(--jade); }
+.mole-panel__text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--hp);
+}
 .arrow { color: var(--text-muted); font-size: 18px; line-height: 1; }
 .action-row {
   display: flex;
@@ -703,9 +888,9 @@ function handleEscortTalk() {
 }
 .mer-card {
   display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 0;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.35);
 }
 .mer-card:last-of-type {
@@ -733,6 +918,9 @@ function handleEscortTalk() {
 .mer-card__body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 .mer-card__title {
   display: flex;
@@ -744,17 +932,23 @@ function handleEscortTalk() {
   font-size: 13px;
   font-weight: 650;
   color: var(--text);
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .mer-card__meta,
 .mer-card__effect {
   display: block;
-  margin-top: 2px;
+  margin-top: 0;
   font-size: 10px;
   color: var(--text-secondary);
-  line-height: 1.35;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .mer-card__buy {
   flex-shrink: 0;
+  align-self: center;
   min-width: 56px;
   padding: 8px 10px;
   border-radius: 10px;

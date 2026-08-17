@@ -10,8 +10,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
 import { getDefaultAvatarUrlByName } from '../constants/default-avatar-src'
-import { getMemberIconUrl } from '../constants/member-icon-src'
+import { loadMemberIconUrl } from '../constants/member-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -23,8 +24,9 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(
-  () => getMemberIconUrl(props.name) || getDefaultAvatarUrlByName(props.name)
+const src = useAsyncIconSrc(
+  () => props.name,
+  async (name) => (await loadMemberIconUrl(name)) || getDefaultAvatarUrlByName(name)
 )
 const fallback = computed(
   () => props.fallbackChar || props.name.slice(0, 1) || '人'

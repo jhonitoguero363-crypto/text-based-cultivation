@@ -9,7 +9,7 @@ import Components from 'unplugin-vue-components/vite'
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<'vite'>(async (merge, { command, mode }) => {
   const baseConfig: UserConfigExport<'vite'> = {
-    projectName: 'text-based-cultivation2',
+    projectName: 'text-based-cultivation',
     date: '2026-8-12',
     designWidth (input) {
       // 配置 NutUI 375 尺寸
@@ -47,6 +47,9 @@ export default defineConfig<'vite'>(async (merge, { command, mode }) => {
       ]
     },
     mini: {
+      optimizeMainPackage: {
+        enable: true
+      },
       postcss: {
         pxtransform: {
           enable: true,
@@ -87,7 +90,7 @@ export default defineConfig<'vite'>(async (merge, { command, mode }) => {
       }
     },
     rn: {
-      appName: 'taroDemo',
+      appName: '文字修仙',
       postcss: {
         cssModules: {
           enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true

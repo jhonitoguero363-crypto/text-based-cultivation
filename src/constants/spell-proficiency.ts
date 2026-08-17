@@ -29,7 +29,7 @@ export const SPELL_PROFICIENCY_TIERS: SpellProficiencyTierDef[] = [
     manaCostReduce: 0,
     cooldownReduce: 0,
     specialChance: 0,
-    effect: '法术基础效果'
+    effect: '法术基础；出战贡献战力与属性克制'
   },
   {
     tier: 2,
@@ -40,7 +40,7 @@ export const SPELL_PROFICIENCY_TIERS: SpellProficiencyTierDef[] = [
     manaCostReduce: 0,
     cooldownReduce: 0,
     specialChance: 0,
-    effect: '法术威力 +5%'
+    effect: '出战战力贡献 +5%（炼丹/炼器为成功率）'
   },
   {
     tier: 3,
@@ -51,7 +51,7 @@ export const SPELL_PROFICIENCY_TIERS: SpellProficiencyTierDef[] = [
     manaCostReduce: 0.05,
     cooldownReduce: 0,
     specialChance: 0,
-    effect: '法术威力 +10%，灵力消耗 -5%'
+    effect: '出战战力贡献 +10%（炼丹/炼器成功率提升）'
   },
   {
     tier: 4,
@@ -62,7 +62,7 @@ export const SPELL_PROFICIENCY_TIERS: SpellProficiencyTierDef[] = [
     manaCostReduce: 0,
     cooldownReduce: 0.1,
     specialChance: 0,
-    effect: '法术威力 +18%，冷却 -10%'
+    effect: '出战战力贡献 +18%'
   },
   {
     tier: 5,
@@ -73,7 +73,7 @@ export const SPELL_PROFICIENCY_TIERS: SpellProficiencyTierDef[] = [
     manaCostReduce: 0.15,
     cooldownReduce: 0,
     specialChance: 0,
-    effect: '法术威力 +30%，灵力消耗 -15%'
+    effect: '出战战力贡献 +30%'
   },
   {
     tier: 6,
@@ -84,7 +84,7 @@ export const SPELL_PROFICIENCY_TIERS: SpellProficiencyTierDef[] = [
     manaCostReduce: 0,
     cooldownReduce: 0,
     specialChance: 0.12,
-    effect: '法术威力 +50%，有概率触发特殊效果'
+    effect: '出战战力贡献 +50%'
   }
 ]
 

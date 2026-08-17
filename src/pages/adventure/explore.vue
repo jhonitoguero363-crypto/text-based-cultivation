@@ -9,6 +9,7 @@
     <view class="content" v-if="location">
       <view class="panel realm-card">
         <view class="realm-card__head">
+          <LocationIcon :name="location.name" size="lg" />
           <view class="row-item__body">
             <text class="row-item__title">{{ location.name }}</text>
             <text class="row-item__desc">{{ location.realm }} · {{ location.danger }}</text>
@@ -16,20 +17,9 @@
             <text class="row-item__desc muted">{{ location.feature }}</text>
             <text class="row-item__desc muted">探索极小概率拾得药材 / 矿石</text>
           </view>
-          <view class="btn btn--gold" @tap="onExplore">探索</view>
-        </view>
-        <view class="stat-grid" style="margin-top: 12px">
-          <view class="stat-cell">
-            <text class="stat-cell__value">{{ adventure.remainTimes }}</text>
-            <text class="stat-cell__label">剩余次数</text>
-          </view>
-          <view class="stat-cell">
-            <text class="stat-cell__value">+{{ reward.exp }}</text>
-            <text class="stat-cell__label">修为掉落</text>
-          </view>
-          <view class="stat-cell">
-            <text class="stat-cell__value">×{{ reward.stones }}</text>
-            <text class="stat-cell__label">灵石掉落</text>
+          <view class="explore-actions">
+            <text class="explore-actions__remain">剩余 {{ adventure.remainTimes }} 次</text>
+            <view class="btn btn--gold" @tap="onExplore">探索</view>
           </view>
         </view>
       </view>
@@ -43,8 +33,8 @@
           </text>
         </view>
         <view v-if="!adventure.companions.length" class="empty-tip">独行历练 · 可在历练页或人物拜访邀请同行</view>
-        <view v-for="mate in adventure.companions" :key="mate.id" class="row-item">
-          <PortraitAvatar :name="mate.name" :fallback-char="mate.avatar" size="md" />
+        <view v-for="mate in adventure.companions" :key="mate.id" class="list-row row-item">
+          <PortraitAvatar :name="mate.name" :fallback-char="mate.avatar" size="lg" />
           <view class="row-item__body">
             <view class="inline-row">
               <text class="row-item__title">{{ mate.name }}</text>
@@ -62,18 +52,22 @@
           <text class="section-title__sub">探索时随机触发 · 非宗门任务</text>
         </view>
         <view v-if="!adventure.encounterEvent" class="empty-tip">本次未触发奇遇</view>
-        <view v-else class="shop-item">
+        <view v-else class="list-row shop-item">
           <view class="shop-item__head">
-            <view class="icon-box">✨</view>
+            <view class="icon-box icon-box--lg">✨</view>
             <view class="row-item__body">
               <view class="inline-row">
                 <text class="row-item__title">{{ adventure.encounterEvent.name }}</text>
                 <text class="tag tag--gold">奇遇</text>
               </view>
               <text class="row-item__desc">{{ adventure.encounterEvent.desc }}</text>
-              <text class="row-item__desc gold">{{ adventure.encounterEvent.reward }}</text>
-              <text v-if="adventure.encounterEvent.playStyle" class="row-item__desc muted">
-                玩法 · {{ adventure.encounterEvent.playStyle }}
+              <text class="row-item__desc gold">
+                奖励 · {{ adventure.encounterEvent.reward
+                }}{{
+                  adventure.encounterEvent.playStyle
+                    ? ` · 玩法 · ${adventure.encounterEvent.playStyle}`
+                    : ''
+                }}
               </text>
             </view>
             <view
@@ -90,20 +84,30 @@
       <view class="panel">
         <view class="section-title">
           <text class="section-title__main">偶遇人物</text>
-          <text class="section-title__sub">击败获灵石 · 小概率法宝 · 极小概率丹药 · 战败或伤或陨</text>
+          <text class="section-title__sub">偶发强制交手</text>
         </view>
         <view v-if="!adventure.npcEncounters.length" class="empty-tip">本次未偶遇修士</view>
-        <view v-for="npc in adventure.npcEncounters" :key="npc.encounterId" class="shop-item">
+        <view v-for="npc in adventure.npcEncounters" :key="npc.encounterId" class="list-row shop-item">
           <view class="shop-item__head">
-            <PortraitAvatar :name="npc.name" :fallback-char="npc.avatar" size="md" />
+            <PortraitAvatar :name="npc.name" :fallback-char="npc.avatar" size="lg" />
             <view class="row-item__body">
               <view class="inline-row">
                 <text class="row-item__title">{{ npc.name }}</text>
                 <text class="tag" :class="npcKindTagClass(npc.kind)">{{ npc.kind }}</text>
+                <text v-if="npc.forced" class="tag tag--hp">强制</text>
               </view>
-              <text class="row-item__desc">{{ npc.title }} · {{ npc.realm }} · {{ npc.personality }}</text>
+              <text class="row-item__desc">
+                {{ npc.title }} · {{ npc.realm }} · {{ npc.personality }}
+              </text>
               <text class="row-item__desc gold">{{ npc.event }}</text>
-              <text class="row-item__desc muted">出没 · {{ npc.place }}</text>
+              <text class="row-item__desc muted">
+                出没 · {{ npc.place
+                }}{{
+                  npc.powerOverride
+                    ? ` · 战力约 ${npc.powerOverride.toLocaleString()}`
+                    : ''
+                }}
+              </text>
             </view>
             <view
               class="btn"
@@ -119,29 +123,28 @@
       <view class="panel">
         <view class="section-title">
           <text class="section-title__main">遭遇妖兽</text>
-          <text class="section-title__sub">击败后选击杀或抓捕 · 战败依战力差受伤或阵亡</text>
+          <text class="section-title__sub">偶发强制交手</text>
         </view>
         <view v-if="!adventure.encounters.length" class="empty-tip">点击探索，随机遭遇妖兽</view>
-        <view v-for="monster in adventure.encounters" :key="monster.encounterId" class="shop-item">
+        <view v-for="monster in adventure.encounters" :key="monster.encounterId" class="list-row shop-item">
           <view class="shop-item__head">
-            <BeastIcon :name="monster.name" size="md" />
+            <BeastIcon :name="monster.name" size="lg" />
             <view class="row-item__body">
               <view class="inline-row">
                 <text class="row-item__title">{{ monster.name }}</text>
                 <text class="tag" :class="tagClass(monster.tone)">{{ monster.rarity }}</text>
+                <text v-if="monster.forced" class="tag tag--hp">强制</text>
               </view>
               <text class="row-item__desc">
-                Lv.{{ monster.level }} · {{ monster.race }} · {{ monster.element }}
+                {{ monster.realm }} · {{ monster.race }} · {{ monster.element
+                }}{{ beastBeatHint(monster.element) ? ` · 惧${beastBeatHint(monster.element)}` : '' }}
               </text>
               <text class="row-item__desc gold">{{ monster.ability }}</text>
-              <text class="row-item__desc muted">掉落 · {{ monster.drops }}</text>
-              <text v-if="monster.captured" class="row-item__desc jade">已抓捕为灵宠</text>
-              <text v-else-if="monster.killed" class="row-item__desc gold">已击杀</text>
-              <text v-else-if="monster.defeated" class="row-item__desc jade">
-                已制服 · 请选择击杀或抓捕
-              </text>
-              <text v-else-if="player.ownedPet(monster.name)" class="row-item__desc muted">
-                已拥有同名灵宠（仅可击杀）
+              <text
+                class="row-item__desc"
+                :class="monsterStatusClass(monster)"
+              >
+                {{ monsterStatusLine(monster) }}
               </text>
             </view>
             <view class="beast-actions">
@@ -191,10 +194,15 @@
 import { computed, ref } from 'vue'
 import Taro, { useLoad, useUnload } from '@tarojs/taro'
 import BeastIcon from '../../components/BeastIcon.vue'
+import LocationIcon from '../../components/LocationIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import PortraitAvatar from '../../components/PortraitAvatar.vue'
 import StoneChip from '../../components/StoneChip.vue'
 import {
+  buildBattlePreview,
+  elementsThatBeat,
+  enemyAttrFromNpcKind,
+  formatBattleFlavor,
   pickBattleSpell,
   rollBattleOutcome,
   rollBattleSpellProfGain,
@@ -202,13 +210,18 @@ import {
   rollPetFallInBattle,
   rollPlayerBattleFate
 } from '../../constants/adventure-battle'
+import { formatLifesavePreviewLine } from '../../constants/pill-system'
+import { getSpellByName } from '../../constants/spell-catalog'
 import {
-  estimateExploreReward,
   getLocationById,
   type AdventureLocation
 } from '../../constants/adventure-locations'
 import { beastToPetFields, captureChanceOf, estimateBeastPower } from '../../constants/beast-catalog'
-import { estimateNpcBattlePower, isDemonicNpcKind } from '../../constants/adventure-npc-catalog'
+import {
+  combatArchetypeFromNpcKind,
+  estimateNpcBattlePower,
+  isHostileNpcToPlayer
+} from '../../constants/adventure-npc-catalog'
 import { resolveMaterialBagCategory } from '../../constants/loot-material-catalog'
 import { INTIMACY_SHARED_ADVENTURE } from '../../constants/intimacy'
 import {
@@ -232,16 +245,6 @@ const location = computed<AdventureLocation | null>(() => {
   return getLocationById(locationId.value) || adventure.selectedLocation
 })
 
-const reward = computed(() => {
-  if (!location.value) return { exp: 0, stones: 0 }
-  const base = estimateExploreReward(location.value)
-  const mult = adventure.companionRewardMult
-  return {
-    exp: Math.max(1, Math.round(base.exp * mult)),
-    stones: Math.max(1, Math.round(base.stones * mult))
-  }
-})
-
 const companionBonusLabel = computed(() => `+${Math.round((adventure.companionRewardMult - 1) * 100)}%`)
 
 const headerSub = computed(() => {
@@ -252,7 +255,50 @@ const headerSub = computed(() => {
 })
 
 function toast(title: string) {
-  Taro.showToast({ title, icon: 'none' })
+  Taro.showToast({ title, icon: 'none', duration: Math.min(3500, 1200 + title.length * 18) })
+}
+
+function beastBeatHint(element: string) {
+  const beaters = elementsThatBeat(element)
+  return beaters.length ? beaters.join('/') : ''
+}
+
+function monsterStatusLine(monster: {
+  drops: string
+  powerOverride?: number | null
+  captured?: boolean
+  killed?: boolean
+  defeated?: boolean
+  name: string
+}) {
+  if (monster.captured) return '已抓捕为灵宠'
+  if (monster.killed) return '已击杀'
+  if (monster.defeated) return '已制服 · 请选择击杀或抓捕'
+  if (player.ownedPet(monster.name)) {
+    return `掉落 · ${monster.drops} · 已拥有同名灵宠（仅可击杀）`
+  }
+  const power =
+    monster.powerOverride != null
+      ? ` · 战力约 ${monster.powerOverride.toLocaleString()}`
+      : ''
+  return `掉落 · ${monster.drops}${power}`
+}
+
+function monsterStatusClass(monster: {
+  captured?: boolean
+  killed?: boolean
+  defeated?: boolean
+}) {
+  if (monster.captured || monster.defeated) return 'jade'
+  if (monster.killed) return 'gold'
+  return 'muted'
+}
+
+function lifesaveLine() {
+  return formatLifesavePreviewLine({
+    bagNames: player.bag.filter((item) => item.category === '丹药').map((item) => item.name),
+    charges: player.lifesaveCharges
+  })
 }
 
 function npcKindTagClass(kind: string) {
@@ -345,6 +391,39 @@ function onExplore() {
 
   player.persist()
   const lootMsg = lootParts.length ? ` · 拾得 ${lootParts.join('、')}` : ''
+
+  if (result.forcedBattle) {
+    const foe = result.forcedBattle
+    const sideLabel = foe.side === 'beast' ? '妖兽' : '敌对势力'
+    const enemyAttr =
+      foe.side === 'beast'
+        ? adventure.encounters.find((item) => item.encounterId === foe.encounterId)?.element || ''
+        : enemyAttrFromNpcKind(
+            adventure.npcEncounters.find((item) => item.encounterId === foe.encounterId)?.kind
+          )
+    const preview = buildBattlePreview({
+      myPower: myBattlePower(),
+      enemyPower: foe.power,
+      enemyName: foe.name,
+      myAttrs: player.battleSpellAttrs(),
+      enemyAttr,
+      titleHint: `探索遭遇势均力敌的${sideLabel}，不得不战！`,
+      showRisk: true,
+      lifesaveLine: lifesaveLine()
+    })
+    Taro.showModal({
+      title: '强制交手',
+      content: preview.content,
+      showCancel: false,
+      confirmText: '应战',
+      success: () => {
+        if (foe.side === 'beast') onChallenge(foe.encounterId, { skipConfirm: true, elementMod: preview.elementMod })
+        else onChallengeNpc(foe.encounterId, { skipConfirm: true, elementMod: preview.elementMod })
+      }
+    })
+    return
+  }
+
   if (result.encounter) return toast(`触发奇遇：${result.encounter.name}${lootMsg}`)
   const beastNames = result.beasts.map((item) => item.name).join('、')
   const npcNames = result.npcs.map((item) => item.name).join('、')
@@ -366,22 +445,30 @@ function onResolveEncounter() {
 }
 
 function applyBattleSpellGain(elementHint = '') {
-  const ownedSpells = sect.spells
-    .filter((item) => item.owned)
-    .map((item) => ({ name: item.name, attr: item.attr }))
+  const slotNames = player.resolveBattleSpellNames()
+  const ownedSpells = (slotNames.length
+    ? slotNames
+    : sect.spells.filter((item) => item.owned).map((item) => item.name)
+  ).map((name) => ({
+    name,
+    attr: getSpellByName(name)?.attr || sect.spells.find((s) => s.name === name)?.attr || ''
+  }))
   const cast = pickBattleSpell(ownedSpells, elementHint)
-  if (!cast) return ''
+  if (!cast) return { castName: '', msg: '' }
   const profGain = rollBattleSpellProfGain(adventure.companionRewardMult)
   const raised = player.addSpellProficiency(cast.name, profGain)
   sect.applySpellProficiency(player.spellProficiency)
-  if (raised.gain <= 0) return ''
+  if (raised.gain <= 0) return { castName: cast.name, msg: '' }
   adventure.pushLog(
     `施展《${cast.name}》克敌，熟练度 +${raised.gain}${raised.tierUp ? `（${raised.name}）` : ''}`,
     'jade'
   )
-  return raised.tierUp
-    ? ` · 《${cast.name}》进境${raised.name}`
-    : ` · 《${cast.name}》熟练 +${raised.gain}`
+  return {
+    castName: cast.name,
+    msg: raised.tierUp
+      ? ` · 《${cast.name}》进境${raised.name}`
+      : ` · 《${cast.name}》熟练 +${raised.gain}`
+  }
 }
 
 /** 战斗结束后判定出战灵兽是否阵亡；返回文案片段 */
@@ -416,21 +503,42 @@ function ensureCanFight() {
 }
 
 /** 战败处理；若阵亡返回 true（已弹窗） */
-function handleBattleDefeat(enemyName: string, enemyPower: number) {
+function handleBattleDefeat(
+  enemyName: string,
+  enemyPower: number,
+  opts?: { elementLabel?: string; winChance?: number }
+) {
   const myPower = myBattlePower()
   const { fate, deathChance, injuryChance } = rollPlayerBattleFate(myPower, enemyPower)
   const deathPct = Math.round(deathChance * 100)
   const injuryPct = Math.round(injuryChance * 100)
+  const flavor = formatBattleFlavor({
+    won: false,
+    enemyName,
+    scene: 'adventure',
+    elementLabel: opts?.elementLabel,
+    fate,
+    winChance: opts?.winChance
+  })
 
   if (fate === 'death') {
-    adventure.pushLog(
-      `与${enemyName}交手落败，身死道消（阵亡风险约 ${deathPct}%）`,
-      'hp'
-    )
+    const saved = player.tryConsumeLifesave()
+    if (saved.ok) {
+      const pillLabel = saved.pillName || '保命丹'
+      const stateTip = saved.injured ? '重伤未愈，需疗伤' : '伤势无碍'
+      adventure.pushLog(
+        `${flavor}；${pillLabel}强行续命（${stateTip}；剩余 ${saved.remain} 次）`,
+        'gold'
+      )
+      player.persist()
+      toast(`${pillLabel}生效，逃过身死（${stateTip}）`)
+      return false
+    }
+    adventure.pushLog(`${flavor}（阵亡风险约 ${deathPct}%）`, 'hp')
     player.persist()
     Taro.showModal({
       title: '身死道消',
-      content: `你败于「${enemyName}」，此世修为尽散。是否重新开辟道途？`,
+      content: `${flavor}\n此世修为尽散。是否重新开辟道途？`,
       confirmText: '重新开始',
       showCancel: false,
       success: () => {
@@ -448,44 +556,84 @@ function handleBattleDefeat(enemyName: string, enemyPower: number) {
   if (fate === 'injury') {
     player.setInjured(true)
     adventure.pushLog(
-      `与${enemyName}交手落败，身受重伤（受伤风险约 ${injuryPct}%），需丹药疗伤后方可再战`,
+      `${flavor}（受伤风险约 ${injuryPct}%），需丹药疗伤后方可再战`,
       'hp'
     )
     player.persist()
-    toast(`战败！身受重伤，需服用疗伤丹药（约 ${injuryPct}%）`)
+    toast(flavor)
     return false
   }
 
-  adventure.pushLog(`与${enemyName}交手不敌，狼狈脱身（幸免于难）`, 'gold')
+  adventure.pushLog(flavor, 'gold')
   player.persist()
-  toast('战败，侥幸脱身')
+  toast(flavor)
   return false
 }
 
-function onChallenge(encounterId: string) {
+function onChallenge(
+  encounterId: string,
+  opts?: { skipConfirm?: boolean; elementMod?: number }
+) {
   if (!ensureCanFight()) return
   const monster = adventure.encounters.find((item) => item.encounterId === encounterId)
   if (!monster) return toast('目标不存在')
   if (monster.defeated || monster.captured || monster.killed) return toast('无法挑战')
 
-  const enemyPower = estimateBeastPower(monster, monster.level)
-  const outcome = rollBattleOutcome(myBattlePower(), enemyPower)
-  if (!outcome.won) {
-    handleBattleDefeat(monster.name, enemyPower)
+  const enemyPower = monster.powerOverride ?? estimateBeastPower(monster, monster.level)
+  const myPower = myBattlePower()
+  const preview = buildBattlePreview({
+    myPower,
+    enemyPower,
+    enemyName: monster.name,
+    myAttrs: player.battleSpellAttrs(),
+    enemyAttr: monster.element,
+    showRisk: true,
+    lifesaveLine: lifesaveLine()
+  })
+
+  const run = () => {
+    const elementMod = opts?.elementMod ?? preview.elementMod
+    const outcome = rollBattleOutcome(myPower, enemyPower, { elementMod })
+    if (!outcome.won) {
+      handleBattleDefeat(monster.name, enemyPower, {
+        elementLabel: preview.elementLabel,
+        winChance: outcome.winChance
+      })
+      return
+    }
+
+    const result = adventure.challengeMonster(encounterId)
+    if (!result) return toast('无法挑战')
+    player.addExp(result.exp)
+    player.markSpiritBeastSeen(result.beast.name)
+    const spellGain = applyBattleSpellGain(result.beast.element)
+    const petMsg = resolveBattlePetFate(enemyPower)
+    player.persist()
+    const flavor = formatBattleFlavor({
+      won: true,
+      enemyName: result.beast.name,
+      scene: 'adventure',
+      castSpell: spellGain.castName,
+      elementLabel: preview.elementLabel,
+      winChance: outcome.winChance
+    })
+    adventure.pushLog(flavor, 'jade')
+    toast(`${flavor}，修为 +${result.exp}${spellGain.msg}${petMsg}；请选择击杀或抓捕`)
+  }
+
+  if (opts?.skipConfirm) {
+    run()
     return
   }
 
-  const result = adventure.challengeMonster(encounterId)
-  if (!result) return toast('无法挑战')
-  player.addExp(result.exp)
-  player.markSpiritBeastSeen(result.beast.name)
-  const spellMsg = applyBattleSpellGain(result.beast.element)
-  const petMsg = resolveBattlePetFate(enemyPower)
-  player.persist()
-  const winPct = Math.round(outcome.winChance * 100)
-  toast(
-    `击败${result.beast.name}（胜率约 ${winPct}%），修为 +${result.exp}${spellMsg}${petMsg}；请选择击杀或抓捕`
-  )
+  Taro.showModal({
+    title: '挑战妖兽',
+    content: preview.content,
+    confirmText: '应战',
+    success: (res) => {
+      if (res.confirm) run()
+    }
+  })
 }
 
 function onKill(encounterId: string) {
@@ -534,66 +682,111 @@ function onCapture(encounterId: string) {
   toast(`抓捕成功，已将${result.beast.name}收为灵宠（无材料掉落）`)
 }
 
-function onChallengeNpc(encounterId: string) {
+function onChallengeNpc(
+  encounterId: string,
+  opts?: { skipConfirm?: boolean; elementMod?: number }
+) {
   if (!ensureCanFight()) return
   const npc = adventure.npcEncounters.find((item) => item.encounterId === encounterId)
   if (!npc) return toast('目标不存在')
   if (npc.interacted) return toast('无法挑战')
 
-  const enemyPower = estimateNpcBattlePower(npc.realm, npc.id)
-  const outcome = rollBattleOutcome(myBattlePower(), enemyPower)
-  if (!outcome.won) {
-    handleBattleDefeat(npc.name, enemyPower)
+  const enemyPower =
+    npc.powerOverride ??
+    estimateNpcBattlePower(npc.realm, npc.id, combatArchetypeFromNpcKind(npc.kind))
+  const myPower = myBattlePower()
+  const enemyAttr = enemyAttrFromNpcKind(npc.kind)
+  const preview = buildBattlePreview({
+    myPower,
+    enemyPower,
+    enemyName: npc.name,
+    myAttrs: player.battleSpellAttrs(),
+    enemyAttr,
+    showRisk: true,
+    lifesaveLine: lifesaveLine()
+  })
+
+  const run = () => {
+    const elementMod = opts?.elementMod ?? preview.elementMod
+    const outcome = rollBattleOutcome(myPower, enemyPower, { elementMod })
+    if (!outcome.won) {
+      handleBattleDefeat(npc.name, enemyPower, {
+        elementLabel: preview.elementLabel,
+        winChance: outcome.winChance
+      })
+      return
+    }
+
+    const result = adventure.challengeNpc(encounterId)
+    if (!result) return toast('无法挑战')
+    player.earnStones(result.stones)
+    player.addExp(result.exp)
+    const spellGain = applyBattleSpellGain(enemyAttr)
+    const petMsg = resolveBattlePetFate(enemyPower)
+
+    const loot = rollNpcDefeatLoot(result.npc.realm)
+    const lootParts: string[] = []
+    if (loot.treasure) {
+      treasure.addTreasure({
+        id: `adv-npc-${loot.treasure.id}-${Date.now()}`,
+        name: loot.treasure.name,
+        grade: loot.treasure.grade,
+        gradeLabel: loot.treasure.gradeLabel,
+        type: loot.treasure.type,
+        desc: loot.treasure.effect,
+        special: loot.treasure.special,
+        story: loot.treasure.story,
+        equipped: false,
+        level: 1,
+        refine: 0
+      })
+      lootParts.push(`法宝「${loot.treasure.name}」`)
+      adventure.pushLog(
+        `搜得${result.npc.name}随身法宝「${loot.treasure.name}」（${loot.treasure.gradeLabel}）`,
+        'gold'
+      )
+    }
+    if (loot.pill) {
+      player.addBagItem(loot.pill.name, '丹药')
+      lootParts.push(`丹药「${loot.pill.name}」`)
+      adventure.pushLog(
+        `搜得${result.npc.name}随身丹药「${loot.pill.name}」（${loot.pill.grade}）`,
+        'gold'
+      )
+    }
+
+    player.persist()
+    const lootMsg = lootParts.length ? ` · 掉落 ${lootParts.join('、')}` : ''
+    if (isHostileNpcToPlayer(result.npc.kind, player.sectId)) {
+      sect.reportMissionProgress('defeat_hostile', 1)
+    }
+    const flavor = formatBattleFlavor({
+      won: true,
+      enemyName: result.npc.name,
+      scene: 'adventure',
+      castSpell: spellGain.castName,
+      elementLabel: preview.elementLabel,
+      winChance: outcome.winChance
+    })
+    adventure.pushLog(flavor, 'jade')
+    toast(
+      `${flavor} · 灵石 ×${result.stones} · 修为 +${result.exp}${spellGain.msg}${petMsg}${lootMsg}`
+    )
+  }
+
+  if (opts?.skipConfirm) {
+    run()
     return
   }
 
-  const result = adventure.challengeNpc(encounterId)
-  if (!result) return toast('无法挑战')
-  player.earnStones(result.stones)
-  player.addExp(result.exp)
-  const spellMsg = applyBattleSpellGain('')
-  const petMsg = resolveBattlePetFate(enemyPower)
-
-  const loot = rollNpcDefeatLoot(result.npc.realm)
-  const lootParts: string[] = []
-  if (loot.treasure) {
-    treasure.addTreasure({
-      id: `adv-npc-${loot.treasure.id}-${Date.now()}`,
-      name: loot.treasure.name,
-      grade: loot.treasure.grade,
-      gradeLabel: loot.treasure.gradeLabel,
-      type: loot.treasure.type,
-      desc: loot.treasure.effect,
-      special: loot.treasure.special,
-      story: loot.treasure.story,
-      equipped: false,
-      level: 1,
-      refine: 0
-    })
-    lootParts.push(`法宝「${loot.treasure.name}」`)
-    adventure.pushLog(
-      `搜得${result.npc.name}随身法宝「${loot.treasure.name}」（${loot.treasure.gradeLabel}）`,
-      'gold'
-    )
-  }
-  if (loot.pill) {
-    player.addBagItem(loot.pill.name, '丹药')
-    lootParts.push(`丹药「${loot.pill.name}」`)
-    adventure.pushLog(
-      `搜得${result.npc.name}随身丹药「${loot.pill.name}」（${loot.pill.grade}）`,
-      'gold'
-    )
-  }
-
-  player.persist()
-  const lootMsg = lootParts.length ? ` · 掉落 ${lootParts.join('、')}` : ''
-  const winPct = Math.round(outcome.winChance * 100)
-  if (isDemonicNpcKind(result.npc.kind)) {
-    sect.reportMissionProgress('defeat_mo_xiu', 1)
-  }
-  toast(
-    `击败${result.npc.name}（胜率约 ${winPct}%），灵石 ×${result.stones} · 修为 +${result.exp}${spellMsg}${petMsg}${lootMsg}`
-  )
+  Taro.showModal({
+    title: '挑战人物',
+    content: preview.content,
+    confirmText: '应战',
+    success: (res) => {
+      if (res.confirm) run()
+    }
+  })
 }
 
 function endAdventure() {
@@ -616,6 +809,98 @@ function endAdventure() {
 <style lang="scss">
 .explore-page {
   padding-bottom: 100px;
+
+  .panel {
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    margin-bottom: 6px;
+  }
+
+  /* 列表行：紧凑 + 按需换行 */
+  .list-row.shop-item {
+    padding: 6px 0;
+  }
+
+  .shop-item__head {
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .list-row.row-item {
+    padding: 6px 8px;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .list-row.row-item + .list-row.row-item {
+    margin-top: 4px;
+  }
+
+  .icon-box--lg {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .row-item__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .row-item__title,
+  .row-item__desc {
+    display: block;
+    line-height: 1.25;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  .row-item__desc {
+    margin-top: 0;
+  }
+
+  .inline-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .beast-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  .beast-actions .btn {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .empty-tip {
+    padding: 8px 4px;
+  }
+
+  .log-row {
+    padding: 5px 0;
+    gap: 8px;
+  }
+
+  .log-row__text {
+    display: block;
+    word-break: break-all;
+    white-space: normal;
+    line-height: 1.35;
+  }
 }
 
 .content {
@@ -625,21 +910,44 @@ function endAdventure() {
 .muted {
   font-size: 10px;
 }
+
 .jade {
   color: var(--jade);
-}
-.beast-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
 }
 
 .realm-card__head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
+
+  .row-item__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .row-item__title,
+  .row-item__desc {
+    display: block;
+  }
+}
+
+.explore-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.explore-actions__remain {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .log-row {
@@ -655,6 +963,7 @@ function endAdventure() {
 
 .log-row__time {
   width: 40px;
+  flex-shrink: 0;
   font-size: 10px;
   color: var(--text-muted);
 }

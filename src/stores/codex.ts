@@ -6,7 +6,7 @@ import { HERB_MATERIALS } from '../constants/herb-catalog'
 import { SECT_MEMBER_CATALOG } from '../constants/member-catalog'
 import { ORE_MATERIALS } from '../constants/ore-catalog'
 import { PET_SHOP_CATALOG } from '../constants/pet-catalog'
-import { PILL_SHOP_CATALOG } from '../constants/pill-catalog'
+import { getAllPills } from '../constants/pill-catalog'
 import { SPELL_CATALOG } from '../constants/spell-catalog'
 import { TECHNIQUE_CATALOG } from '../constants/technique-catalog'
 import { LOOT_MATERIALS } from '../constants/loot-material-catalog'
@@ -118,7 +118,7 @@ export const useCodexStore = defineStore('codex', () => {
     TECHNIQUE_CATALOG.map((item) => ({
       id: item.id,
       name: item.name,
-      detail: `${item.grade} · ${item.school} · ${item.type} · ${item.realmLabel} · ${item.effect}`,
+      detail: `${item.grade} · ${item.school} · ${item.attr || item.type} · ${item.realmLabel} · ${item.effect}`,
       unlocked: bagOwned(item.name, '功法'),
       origin: item.school
     }))
@@ -139,10 +139,12 @@ export const useCodexStore = defineStore('codex', () => {
     const owned = new Set(
       player.bag.filter((item) => item.category === '丹药').map((item) => item.name)
     )
-    return PILL_SHOP_CATALOG.map((item) => ({
+    return getAllPills().map((item) => ({
       id: item.id,
       name: item.name,
-      detail: `${item.grade} · 难度${item.craftDifficulty} · ${item.realm} · ${item.type} · ${item.effect}`,
+      detail: item.marketOnly
+        ? `${item.grade} · 坊市稀有 · ${item.realm} · ${item.type} · ${item.effect}`
+        : `${item.grade} · 难度${item.craftDifficulty} · ${item.realm} · ${item.type} · ${item.effect}`,
       unlocked: owned.has(item.name)
     }))
   })

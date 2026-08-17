@@ -269,8 +269,8 @@ function toast(title: string) {
 .vault-card {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
   border-radius: 12px;
   background: linear-gradient(160deg, rgba(31, 43, 69, 0.95), rgba(24, 33, 54, 0.98));
   border: 1px solid var(--border-soft);
@@ -334,7 +334,7 @@ function toast(title: string) {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin-top: 5px;
+  margin-top: 2px;
 }
 
 .vault-card__tag {
@@ -360,13 +360,12 @@ function toast(title: string) {
 
 .vault-card__desc {
   display: block;
-  margin-top: 5px;
+  margin-top: 2px;
   font-size: 11px;
   color: var(--text-muted);
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .vault-card__action {

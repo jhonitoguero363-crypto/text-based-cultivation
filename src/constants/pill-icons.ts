@@ -1,4 +1,4 @@
-/** 丹药图标：由 scripts/slice-pill-icons.mjs 自图鉴切片生成 */
+/** 丹药图标：丹阁 atlas + 坊市稀有 atlas-rare 切片 */
 
 /** 图鉴切片名 → 文件名 */
 export const PILL_ICON_FILES: Record<string, string> = {
@@ -9,7 +9,7 @@ export const PILL_ICON_FILES: Record<string, string> = {
   '筑基丹': 'pill-005.png',
   '养魂丹': 'pill-006.png',
   '紫灵丹': 'pill-007.png',
-  '金刚丹': 'pill-008.png',
+  '金刚丹': 'pill-061.png',
   '结金丹': 'pill-009.png',
   '赤阳丹': 'pill-010.png',
   '太阴丹': 'pill-011.png',
@@ -43,6 +43,29 @@ export const PILL_ICON_FILES: Record<string, string> = {
   '鸿蒙悟道丹': 'pill-039.png',
   '太初神丹': 'pill-040.png',
   '无极道丹': 'pill-041.png',
+  '五行洗髓丹': 'pill-042.png',
+  '青木灵根丹': 'pill-043.png',
+  '赤炎灵根丹': 'pill-044.png',
+  '厚土灵根丹': 'pill-045.png',
+  '庚金灵根丹': 'pill-046.png',
+  '寒水灵根丹': 'pill-047.png',
+  '五行归元丹': 'pill-048.png',
+  '五行圣灵丹': 'pill-049.png',
+  '开悟丹': 'pill-050.png',
+  '明心丹': 'pill-051.png',
+  '悟道丹': 'pill-052.png',
+  '天悟丹': 'pill-053.png',
+  '太初悟道丹': 'pill-054.png',
+  '聚灵丹': 'pill-055.png',
+  '聚元丹': 'pill-056.png',
+  '天灵丹': 'pill-057.png',
+  '悟道灵丹': 'pill-058.png',
+  '鸿蒙聚灵丹': 'pill-059.png',
+  '暴血丹': 'pill-060.png',
+  '狂灵丹': 'pill-062.png',
+  '战神丹': 'pill-063.png',
+  '九转战魂丹': 'pill-064.png',
+  '仙魔战神丹': 'pill-065.png',
 }
 
 export const PILL_ICON_ALIASES: Record<string, string> = {

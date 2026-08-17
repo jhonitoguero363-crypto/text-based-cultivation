@@ -10,7 +10,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getSpellIconUrl } from '../constants/spell-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadSpellIconUrl } from '../constants/spell-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +22,7 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getSpellIconUrl(props.name))
+const src = useAsyncIconSrc(() => props.name, loadSpellIconUrl)
 const fallback = computed(() => props.fallbackChar || props.name.slice(0, 1) || '术')
 </script>
 

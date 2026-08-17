@@ -1,8 +1,8 @@
 {
-  "name": "text-based-cultivation2",
+  "name": "text-based-cultivation",
   "version": "1.0.0",
   "private": true,
-  "description": "",
+  "description": "文字修仙",
   "templateInfo": {
     "name": "vue3-NutUI",
     "typescript": true,

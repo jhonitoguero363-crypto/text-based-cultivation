@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./dist",
-  "projectname": "text-based-cultivation2",
-  "description": "",
+  "projectname": "文字修仙",
+  "description": "文字修仙",
   "appid": "touristappid",
   "setting": {
     "urlCheck": true,

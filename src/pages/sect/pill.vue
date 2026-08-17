@@ -351,40 +351,47 @@ function sell(name: string) {
   font-weight: 600;
 }
 .shop-item {
-  padding: 12px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
 .shop-item:last-child { border-bottom: none; }
 .shop-item__head {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 .shop-item__special {
   display: block;
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--jade);
-  line-height: 1.4;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .shop-item__story {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 10px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .shop-item__lock {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--hp);
+  line-height: 1.25;
+  word-break: break-word;
 }
 .shop-item__owned {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--text-muted);
+  line-height: 1.25;
 }
 .mat-list {
   margin-top: 8px;

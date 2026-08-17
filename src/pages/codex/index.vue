@@ -20,6 +20,7 @@
             <view class="codex-cell__art">
               <OreIcon v-if="codex.tab === '矿石'" :name="item.name" size="lg" />
               <HerbIcon v-else-if="codex.tab === '药材'" :name="item.name" size="lg" />
+              <LootMaterialIcon v-else-if="codex.tab === '材料'" :name="item.name" size="lg" />
               <PillIcon v-else-if="codex.tab === '丹药'" :name="item.name" size="lg" />
               <TreasureIcon
                 v-else-if="codex.tab === '法宝'"
@@ -55,6 +56,7 @@
           <view class="codex-sheet__art">
             <OreIcon v-if="codex.tab === '矿石'" :name="active.name" size="lg" />
             <HerbIcon v-else-if="codex.tab === '药材'" :name="active.name" size="lg" />
+            <LootMaterialIcon v-else-if="codex.tab === '材料'" :name="active.name" size="lg" />
             <PillIcon v-else-if="codex.tab === '丹药'" :name="active.name" size="lg" />
             <TreasureIcon
               v-else-if="codex.tab === '法宝'"
@@ -98,6 +100,7 @@
 import { computed, ref } from 'vue'
 import BeastIcon from '../../components/BeastIcon.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
+import LootMaterialIcon from '../../components/LootMaterialIcon.vue'
 import OreIcon from '../../components/OreIcon.vue'
 import PetIcon from '../../components/PetIcon.vue'
 import PillIcon from '../../components/PillIcon.vue'
@@ -182,10 +185,9 @@ function closeDetail() {
   font-size: 11px;
   color: var(--text-primary);
   font-weight: 600;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .codex-cell--locked {

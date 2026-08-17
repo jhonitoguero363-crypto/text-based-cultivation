@@ -41,7 +41,7 @@
                   <text class="row-item__title">{{ item.name }}</text>
                   <text class="tag tag--jade">{{ item.role }}</text>
                 </view>
-                <text class="row-item__desc">{{ item.race }} · {{ item.rarity }}</text>
+                <text class="row-item__desc">{{ item.realm }} · {{ item.race }} · {{ item.rarity }}</text>
                 <text class="row-item__desc gold">{{ item.ability }}</text>
               </view>
               <view
@@ -75,7 +75,7 @@
                   {{ item.source === 'capture' ? '抓捕' : '灵宠' }}
                 </text>
               </view>
-              <text class="row-item__desc">{{ item.grade }} · {{ item.type }}</text>
+              <text class="row-item__desc">{{ item.realm || '炼气' }} · {{ item.type }}</text>
               <text class="row-item__desc">{{ item.bonus }} · {{ item.status }}</text>
               <text class="row-item__desc gold">回收 {{ sellPriceOf(item).toLocaleString() }} 灵石</text>
             </view>
@@ -187,6 +187,7 @@ function buy(item: CatalogPet) {
     grade: item.rarity,
     type: `${item.race} · ${item.role}`,
     bonus: item.ability,
+    realm: item.realm,
     source: 'shop'
   })
   player.persist()
@@ -271,26 +272,29 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 .shop-item {
-  padding: 12px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
 .shop-item:last-child { border-bottom: none; }
 .shop-item__head {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 .shop-item__lock {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--hp);
+  line-height: 1.25;
+  word-break: break-word;
 }
 .shop-item__owned {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--text-muted);
+  line-height: 1.25;
 }
 .gold { color: var(--gold); }
 .empty-tip {

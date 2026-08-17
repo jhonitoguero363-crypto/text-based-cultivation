@@ -523,6 +523,15 @@ export function getPetByName(name: string) {
   return PET_SHOP_CATALOG.find((item) => item.name === name) || null
 }
 
+/** 灵宠 / 抓捕妖兽所属大境界（目录优先） */
+export function resolveSpiritBeastRealm(name: string): RealmMajor {
+  const shop = getPetByName(name)
+  if (shop) return shop.realm
+  const beast = getBeastByName(name)
+  if (beast) return beast.realm
+  return '炼气'
+}
+
 /**
  * 兽阁回收价：
  * - 兽阁购买的灵宠 → 目录 sellPrice

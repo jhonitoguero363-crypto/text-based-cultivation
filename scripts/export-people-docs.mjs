@@ -237,7 +237,7 @@ advMd += `- 正道修士：其他正道宗门名录；无则目录「正道修�
 advMd += `- 魔道修士：其他魔门宗门名录；无则目录魔修\n\n`
 
 advMd += `### 任务特例\n\n`
-advMd += `- **清剿魔修**（\`defeat_mo_xiu\`）：优先塞入一名其他魔门人物（逻辑同 \`pickDemonicEncounterNpc\`，无则目录魔修）\n`
+advMd += `- **清剿敌对势力**（\`defeat_hostile\`）：优先塞入一名相对玩家派系的敌对人物（\`pickHostileEncounterNpc\`；正道、魔门、妖族互为敌对；无宗时计魔道/妖族）\n`
 advMd += `- **营救弟子**（\`rescue_talk\`）：生成「被困弟子」，\`kind=宗门弟子\`，称号为「{本宗名}外门」\n\n`
 
 advMd += `## 分宗名录（偶遇主池）\n\n`

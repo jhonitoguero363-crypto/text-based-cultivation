@@ -140,12 +140,12 @@
         <template v-else>
           <view class="mission-card">
             <view class="inline-row">
-              <text class="row-item__title">{{ sect.activeMission.name }}</text>
+              <text class="row-item__title">{{ missionName(sect.activeMission) }}</text>
               <text class="tag" :class="missionTagClass(sect.activeMission.tagTone)">
                 {{ sect.activeMission.tag }}
               </text>
             </view>
-            <text class="row-item__desc">{{ sect.activeMission.desc }}</text>
+            <text class="row-item__desc">{{ missionDesc(sect.activeMission) }}</text>
             <text v-if="sect.activeMission.objective" class="row-item__desc jade">
               条件 · {{ missionConditionText }}
             </text>
@@ -203,7 +203,7 @@
                 </text>
               </view>
               <text class="pet-card__meta">
-                {{ pet.source === 'capture' ? '抓捕' : '灵宠' }} · {{ pet.grade }} · {{ pet.type }}
+                {{ pet.source === 'capture' ? '抓捕' : '灵宠' }} · {{ pet.realm || '炼气' }} · {{ pet.type }}
               </text>
               <text class="pet-card__bonus">{{ pet.bonus }}</text>
               <view class="pet-card__foot">
@@ -241,9 +241,15 @@
         </view>
         <view v-if="!bagList.length" class="empty-tip">背包空空如也</view>
         <view v-else class="bag-grid">
-          <view v-for="item in bagList" :key="item.id" class="bag-item">
+          <view
+            v-for="item in bagList"
+            :key="item.id"
+            class="bag-item"
+            @tap="onBagItemTap(item)"
+          >
             <OreIcon v-if="showOreIcon(item)" :name="item.name" size="md" />
             <HerbIcon v-else-if="showHerbIcon(item)" :name="item.name" size="md" />
+            <LootMaterialIcon v-else-if="showLootIcon(item)" :name="item.name" size="md" />
             <PillIcon v-else-if="showPillIcon(item)" :name="item.name" size="md" />
             <text class="bag-item__name">{{ item.name }}</text>
             <text class="bag-item__count" :style="{ color: colorOf(item.color) }">
@@ -251,7 +257,7 @@
             </text>
           </view>
         </view>
-        <text class="hint">丹药可在修炼界面快速使用 · 功法 / 法术见上方 · 法宝请前往法宝页</text>
+        <text class="hint">点按丹药可服用 · 功法 / 法术见上方 · 法宝请前往法宝页</text>
         <view class="link-row" @tap="goTreasure">
           <text>前往法宝界面</text>
           <text>›</text>
@@ -268,6 +274,7 @@ import { computed } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import AppTabBar from '../../components/AppTabBar.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
+import LootMaterialIcon from '../../components/LootMaterialIcon.vue'
 import OreIcon from '../../components/OreIcon.vue'
 import PillIcon from '../../components/PillIcon.vue'
 import TechniqueIcon from '../../components/TechniqueIcon.vue'
@@ -278,12 +285,18 @@ import BeastIcon from '../../components/BeastIcon.vue'
 import PetIcon from '../../components/PetIcon.vue'
 import { hasPillIcon } from '../../constants/pill-icon-src'
 import { canHealInjury } from '../../constants/pill-catalog'
+import {
+  canUsePillManually,
+  getPillEffectCategory,
+  getPillMechanic
+} from '../../constants/pill-system'
 import { parseMissionReward } from '../../constants/mission-catalog'
 import {
   formatMissionConditionText,
   formatMissionProgress,
   isMissionObjectiveMet
 } from '../../constants/mission-catalog'
+import { localizeMissionText } from '../../constants/mission-localize'
 import { usePlayerStore, type BagCategory, type BagItem } from '../../stores/player'
 import { useSectStore } from '../../stores/sect'
 
@@ -319,8 +332,16 @@ const healPills = computed(() =>
 const missionProgressText = computed(() => formatMissionProgress(sect.activeMission))
 const missionReady = computed(() => isMissionObjectiveMet(sect.activeMission))
 const missionConditionText = computed(() =>
-  formatMissionConditionText(sect.activeMission, sect.members)
+  formatMissionConditionText(sect.activeMission, sect.members, sect.sectId)
 )
+
+function missionName(item: { name?: string } | null | undefined) {
+  return localizeMissionText(item?.name || '', sect.sectId)
+}
+
+function missionDesc(item: { desc?: string } | null | undefined) {
+  return localizeMissionText(item?.desc || '', sect.sectId)
+}
 
 useDidShow(() => {
   player.hydrate()
@@ -362,6 +383,10 @@ function showHerbIcon(item: BagItem) {
   return item.category === '药材'
 }
 
+function showLootIcon(item: BagItem) {
+  return item.category === '材料'
+}
+
 function showPillIcon(item: BagItem) {
   return item.category === '丹药' && hasPillIcon(item.name)
 }
@@ -379,7 +404,7 @@ function completeActive() {
   const mission = sect.activeMission
   if (!mission) return toast('暂无进行中任务')
   if (!isMissionObjectiveMet(mission)) {
-    return toast(formatMissionConditionText(mission, sect.members) || '任务条件尚未达成')
+    return toast(formatMissionConditionText(mission, sect.members, sect.sectId) || '任务条件尚未达成')
   }
   const claimed = sect.completeMission(mission.instanceId)
   if (!claimed) return toast('完成失败')
@@ -405,7 +430,7 @@ function cancelActive() {
   if (!mission) return toast('暂无进行中任务')
   Taro.showModal({
     title: '取消任务',
-    content: `确定取消「${mission.name}」？取消后可领取其他任务。`,
+    content: `确定取消「${missionName(mission)}」？取消后可领取其他任务。`,
     success: (res) => {
       if (!res.confirm) return
       if (!sect.cancelMission(mission.instanceId)) return toast('取消失败')
@@ -456,6 +481,37 @@ function onHealInjury() {
     return toast('疗伤失败')
   }
   toast(`服下${result.pillName}，伤势已愈`)
+}
+
+function onBagItemTap(item: BagItem) {
+  if (item.category !== '丹药') return
+  const category = getPillEffectCategory(item.name)
+  const mechanic = getPillMechanic(item.name)
+  if (!canUsePillManually(item.name)) {
+    if (category === '突破丹' || mechanic?.breakthroughOnly) {
+      return toast('突破丹于破境时选择服用')
+    }
+    if (category === '保命丹' || mechanic?.lifesaveOnly) {
+      return toast('保命丹于身死时自动触发')
+    }
+    return toast('此丹不可手动服用')
+  }
+  const hint = mechanic?.specialHint || category || '丹药'
+  Taro.showModal({
+    title: `服用${item.name}`,
+    content: `${hint}\n确认服用 1 枚？`,
+    success: (res) => {
+      if (!res.confirm) return
+      const result = player.usePill(item.name)
+      if (!result.ok) {
+        if (result.reason === 'no_pill') return toast('丹药不足')
+        if (result.reason === 'breakthrough_only') return toast('突破丹于破境时选择服用')
+        if (result.reason === 'lifesave_only') return toast('保命丹于身死时自动触发')
+        return toast('服用失败')
+      }
+      toast(result.message)
+    }
+  })
 }
 </script>
 
@@ -707,9 +763,9 @@ function onHealInjury() {
 
 .skill-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 6px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
   border-radius: 10px;
   background: var(--panel-2);
   border: 1px solid var(--border-soft);
@@ -735,49 +791,44 @@ function onHealInjury() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-height: 54px;
+  gap: 1px;
 }
 
 .skill-row__name {
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .skill-row__meta {
   font-size: 11px;
   font-weight: 600;
   color: var(--gold);
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .skill-row__sub {
   font-size: 10px;
   color: var(--text-muted);
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .mission-card {
-  padding: 10px;
+  padding: 8px;
   border-radius: var(--radius-sm);
   background: var(--panel-2);
   border: 1px solid var(--border-soft);
 }
 
 .mission-card .row-item__desc {
-  margin-top: 4px;
+  margin-top: 1px;
 }
 
 .mission-actions {
@@ -793,14 +844,15 @@ function onHealInjury() {
 .pet-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .pet-card {
   display: flex;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 12px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
   background: var(--panel-2);
   border: 1px solid var(--border-soft);
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -831,7 +883,9 @@ function onHealInjury() {
   font-size: 14px;
   font-weight: 700;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .pet-card__badge {
@@ -856,22 +910,26 @@ function onHealInjury() {
 
 .pet-card__meta {
   display: block;
-  margin-top: 4px;
+  margin-top: 1px;
   font-size: 11px;
   color: var(--text-secondary);
-  line-height: 1.35;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .pet-card__bonus {
   display: block;
-  margin-top: 3px;
+  margin-top: 1px;
   font-size: 11px;
   color: var(--jade);
-  line-height: 1.35;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .pet-card__foot {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;

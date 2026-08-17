@@ -66,20 +66,58 @@ export function rollRootBones(): RootBone[] {
   })
 }
 
-/** 默认隐藏的稀有灵根：仅当其为全灵根最高值时才展示 */
+/** 默认隐藏的稀有灵根：仅当其进入多灵根判定时才展示 */
 export const HIDDEN_UNLESS_PRIMARY_ROOTS: RootName[] = ['风', '冰', '雷']
 
 export function isHiddenUnlessPrimaryRoot(name: RootName | string) {
   return HIDDEN_UNLESS_PRIMARY_ROOTS.includes(name as RootName)
 }
 
-/** 主灵根：取数值最高者 */
+/** 与最高灵根相差不超过此值，一并计入多灵根判定 */
+export const MULTI_ROOT_VALUE_DELTA = 5
+
+const ROOT_DISPLAY_ORDER: RootName[] = ['金', '木', '水', '火', '土', '风', '冰', '雷']
+
+/** 主灵根：取数值最高者（突破 / 入门阈值等仍用此最高值） */
 export function pickPrimaryRoot(roots: RootBone[]): RootBone {
   return roots.reduce((best, cur) => (cur.value > best.value ? cur : best), roots[0])
 }
 
+/**
+ * 主灵根集合：与最高值相差 ≤ MULTI_ROOT_VALUE_DELTA 的各系。
+ * 按数值降序，同分按金木水火土风冰雷固定序。
+ */
+export function pickPrimaryRoots(roots: RootBone[]): RootBone[] {
+  if (!roots.length) return []
+  const max = Math.max(...roots.map((item) => item.value))
+  return roots
+    .filter((item) => max - item.value <= MULTI_ROOT_VALUE_DELTA)
+    .sort((a, b) => {
+      if (b.value !== a.value) return b.value - a.value
+      return ROOT_DISPLAY_ORDER.indexOf(a.name) - ROOT_DISPLAY_ORDER.indexOf(b.name)
+    })
+}
+
 export function formatPrimaryRoot(root: RootBone): string {
   return `${root.name}（${root.grade}）`
+}
+
+/** 根骨展示：单系 / 双灵根 / 三灵根…（品阶取最高一系） */
+export function formatRootBoneLabel(roots: RootBone[]): string {
+  const primaries = pickPrimaryRoots(roots)
+  if (!primaries.length) return '未知'
+  if (primaries.length === 1) {
+    return formatPrimaryRoot({
+      ...primaries[0],
+      grade: gradeOf(primaries[0].value)
+    })
+  }
+  const names = primaries.map((item) => item.name).join('')
+  const grade = gradeOf(primaries[0].value)
+  const n = primaries.length
+  const kind =
+    n === 2 ? '双灵根' : n === 3 ? '三灵根' : n === 4 ? '四灵根' : n === 5 ? '五灵根' : '杂灵根'
+  return `${names}${kind}（${grade}）`
 }
 
 /** 入宗可授身份（杂役～内门），依主灵根与宗门等级 */
@@ -108,13 +146,13 @@ export function resolveJoinRankFromRoots(
 
 /**
  * 界面展示用灵根列表。
- * 金木水火土始终显示；风/冰/雷仅当其数值等于全灵根最高值时显示。
+ * 金木水火土始终显示；风/冰/雷仅当其进入多灵根判定（与最高值相差 ≤5）时显示。
  */
 export function visibleRootBones(roots: RootBone[]): RootBone[] {
   if (!roots.length) return []
   const max = Math.max(...roots.map((item) => item.value))
   return roots.filter((item) => {
     if (!isHiddenUnlessPrimaryRoot(item.name)) return true
-    return item.value === max
+    return max - item.value <= MULTI_ROOT_VALUE_DELTA
   })
 }

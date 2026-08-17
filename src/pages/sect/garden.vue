@@ -157,14 +157,14 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 .shop-item {
-  padding: 12px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
 .shop-item:last-child { border-bottom: none; }
 .shop-item__head {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 .muted { color: var(--text-muted); }
 </style>

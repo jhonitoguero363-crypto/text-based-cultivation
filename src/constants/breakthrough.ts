@@ -44,7 +44,7 @@ export function isMajorRealmBreakthrough(current: RealmState, next: RealmState) 
 export function getBreakthroughPillName(major: RealmMajor): string | null {
   if (major === '无修为' || major === '炼气') return null
   if (major === '飞升') return '飞升丹'
-  const pill = PILL_SHOP_CATALOG.find((item) => item.realm === major && item.type === '突破')
+  const pill = PILL_SHOP_CATALOG.find((item) => item.realm === major && item.type === '突破丹')
   return pill?.name || null
 }
 

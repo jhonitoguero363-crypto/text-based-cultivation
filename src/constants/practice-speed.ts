@@ -1,5 +1,5 @@
 import type { RootBone, RootName } from './roots'
-import { pickPrimaryRoot } from './roots'
+import { pickPrimaryRoot, pickPrimaryRoots } from './roots'
 
 /** 悟性基准（此值倍率 = 1） */
 const COMPREHENSION_BASE = 50
@@ -119,14 +119,29 @@ export function formatRelationLabel(relation: ElementRelation) {
 }
 
 /**
- * 从功法类型 / 流派解析对应灵根属性。
- * 无对应五行者返回 null（仅受悟性影响）。
+ * 从功法属性 / 类型 / 流派解析对应灵根。
+ * 优先识别九种标准属性；无属性或无法对应者返回 null（仅受悟性影响）。
  */
 export function resolveTechniqueRootAttr(
   typeText: string,
   schoolText?: string
 ): RootName | null {
-  const text = `${typeText || ''}${schoolText ? `/${schoolText}` : ''}`
+  const raw = (typeText || '').trim()
+  if (!raw || raw === '无属性') return null
+  if (
+    raw === '金' ||
+    raw === '木' ||
+    raw === '水' ||
+    raw === '火' ||
+    raw === '土' ||
+    raw === '风' ||
+    raw === '冰' ||
+    raw === '雷'
+  ) {
+    return raw
+  }
+
+  const text = `${raw}${schoolText ? `/${schoolText}` : ''}`
 
   if (/木/.test(text)) return '木'
   if (/火|炎/.test(text)) return '火'
@@ -138,8 +153,10 @@ export function resolveTechniqueRootAttr(
   if (/金|剑/.test(text)) return '金'
 
   if (/身法|空间/.test(text)) return '风'
-  if (/炼体/.test(text)) return '土'
+  if (/炼体|体修/.test(text)) return '土'
   if (/剑修|剑道/.test(text)) return '金'
+  if (/魔修|血煞|天魔/.test(text)) return '火'
+  if (/妖族|妖神|血脉/.test(text)) return '土'
   if (/雷修/.test(text)) return '雷'
   if (/丹修|驭兽|世界/.test(text)) return '木'
   if (/魂修|魂道/.test(text)) return '冰'
@@ -192,8 +209,8 @@ function caveSpeedMult(cultivateBonus = 0, gatherSpeed = 1) {
 
 /**
  * 灵根亲和：
- * - 同属（含风≈木、冰≈水、雷≈火）：灵根越好越快
- * - 与主灵根相克：大幅降低
+ * - 同属（含风≈木、冰≈水、雷≈火）：看对应根骨；多灵根时任一主系同属即算同属
+ * - 与最高主灵根相克：大幅降低
  * - 其他异属（含相生）：小幅降低
  * - 无属性：不乘灵根项
  */
@@ -201,8 +218,8 @@ export function calcElementAffinity(
   roots: RootBone[] | undefined,
   targetRoot: RootName | null
 ): Pick<PracticeSpeedBreakdown, 'root' | 'rootName' | 'rootValue' | 'primaryRoot' | 'relation'> {
-  const primary = roots?.length ? pickPrimaryRoot(roots) : null
-  const primaryRoot = primary?.name || null
+  const primaries = roots?.length ? pickPrimaryRoots(roots) : []
+  const primaryRoot = primaries[0]?.name || (roots?.length ? pickPrimaryRoot(roots).name : null)
   if (!targetRoot) {
     return {
       root: 1,
@@ -214,17 +231,20 @@ export function calcElementAffinity(
   }
 
   const rootValue = getRootValue(roots, targetRoot)
-  const relation = getElementRelation(primaryRoot, targetRoot)
 
-  if (relation === 'match') {
-    return {
-      root: rootSpeedMult(rootValue),
-      rootName: targetRoot,
-      rootValue,
-      primaryRoot,
-      relation
+  for (const item of primaries) {
+    if (getElementRelation(item.name, targetRoot) === 'match') {
+      return {
+        root: rootSpeedMult(rootValue),
+        rootName: targetRoot,
+        rootValue,
+        primaryRoot,
+        relation: 'match'
+      }
     }
   }
+
+  const relation = getElementRelation(primaryRoot, targetRoot)
   if (relation === 'restrain') {
     return {
       root: ELEMENT_RESTRAIN_MULT,
@@ -239,7 +259,7 @@ export function calcElementAffinity(
     rootName: targetRoot,
     rootValue,
     primaryRoot,
-    relation
+    relation: relation === 'match' ? 'other' : relation
   }
 }
 

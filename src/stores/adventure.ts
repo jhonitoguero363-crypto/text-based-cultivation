@@ -7,19 +7,32 @@ import {
   type AdventureLocation
 } from '../constants/adventure-locations'
 import {
+  captureChanceOf,
+  estimateBeastLevel,
+  pickMatchedPowerBeast,
+  rollEncounterBeasts,
+  type CatalogBeast
+} from '../constants/beast-catalog'
+import {
   ADVENTURE_NPC_CATALOG,
   normalizeAdventureNpc,
-  pickDemonicEncounterNpc,
+  pickHostileEncounterNpc,
   rollEncounterNpcs,
   rollMarketNpcs,
   type AdventureNpc
 } from '../constants/adventure-npc-catalog'
 import {
-  captureChanceOf,
-  estimateBeastLevel,
-  rollEncounterBeasts,
-  type CatalogBeast
-} from '../constants/beast-catalog'
+  COMPANION_POWER_MULT,
+  FORCED_BATTLE_CHANCE,
+  FORCED_BATTLE_CHANCE_HOSTILE_BETRAYAL,
+  rollBattleExpGain,
+  rollExploreMaterialLoot,
+  rollForcedBattleTrigger,
+  rollMatchedBattlePower,
+  rollNpcStoneGain,
+  type ExploreMaterialLoot,
+  type ForcedBattleSide
+} from '../constants/adventure-battle'
 import { formatTianyuanCalendar, getGameDayKey } from '../constants/game-time'
 import {
   hasSplitMaterialShelves,
@@ -34,12 +47,6 @@ import {
   rollEncounterResolveReward,
   type AdventureEncounter
 } from '../constants/mission-catalog'
-import {
-  rollBattleExpGain,
-  rollExploreMaterialLoot,
-  rollNpcStoneGain,
-  type ExploreMaterialLoot
-} from '../constants/adventure-battle'
 import type { RealmMajor } from '../constants/realm'
 import { getRealmMajorIndex } from '../constants/treasure'
 import { usePlayerStore } from './player'
@@ -63,11 +70,24 @@ export interface EncounterBeast extends CatalogBeast {
   /** 已击杀（主动击杀，或抓捕失败转击杀） */
   killed: boolean
   encounterId: string
+  /** 强制交手：覆盖估算战力（势均力敌） */
+  powerOverride?: number
+  /** 本次探索强制交手目标 */
+  forced?: boolean
 }
 
 export interface EncounterNpc extends AdventureNpc {
   interacted: boolean
   encounterId: string
+  powerOverride?: number
+  forced?: boolean
+}
+
+export interface ForcedBattleInfo {
+  side: ForcedBattleSide
+  encounterId: string
+  name: string
+  power: number
 }
 
 /** 历练同行人员（宗门人物） */
@@ -115,9 +135,11 @@ export const useAdventureStore = defineStore('adventure', () => {
     Math.max(0, ADVENTURE_COMPANION_MAX - companions.value.length)
   )
   const companionNames = computed(() => companions.value.map((item) => item.name).join('、'))
-  /** 同行战力合计（展示用） */
+  /** 同行战力合计（名录 × COMPANION_POWER_MULT；展示=结算） */
   const companionPower = computed(() =>
-    companions.value.reduce((sum, item) => sum + (item.power || 0), 0)
+    Math.round(
+      companions.value.reduce((sum, item) => sum + (item.power || 0), 0) * COMPANION_POWER_MULT
+    )
   )
   /** 同行对探索/击败收益的倍率加成：每人约 +8%，最多 3 人 */
   const companionRewardMult = computed(() => 1 + companions.value.length * 0.08)
@@ -411,13 +433,13 @@ export const useAdventureStore = defineStore('adventure', () => {
       ? rollEncounterNpcs(location.name, location.realm, npcCount, playerSectId)
       : []
 
-    // 任务加成：清剿魔修 / 营救弟子
+    // 任务加成：清剿敌对势力 / 营救弟子
     try {
       const sectStore = useSectStore()
       const mission = sectStore.activeMission
       const kind = mission?.objective?.kind
-      if (kind === 'defeat_mo_xiu') {
-        const pick = pickDemonicEncounterNpc(location.realm, playerSectId)
+      if (kind === 'defeat_hostile') {
+        const pick = pickHostileEncounterNpc(location.realm, playerSectId)
         if (pick) {
           rolledNpcs = [pick, ...rolledNpcs.filter((n) => n.id !== pick.id)].slice(0, 2)
         }
@@ -449,6 +471,68 @@ export const useAdventureStore = defineStore('adventure', () => {
 
     encounterEvent.value = rollAdventureEncounter()
 
+    const playerStore = usePlayerStore()
+    playerStore.clearCliffIfExpired()
+    let forcedBattle: ForcedBattleInfo | null = null
+    const forceChance = playerStore.hasHostileBetrayal()
+      ? FORCED_BATTLE_CHANCE_HOSTILE_BETRAYAL
+      : FORCED_BATTLE_CHANCE
+    const forcedSide =
+      playerStore.injured || playerStore.onCliff ? null : rollForcedBattleTrigger(forceChance)
+    if (forcedSide) {
+      const myPower = Math.max(100, playerStore.combatPower + companionPower.value)
+      const matchedPower = rollMatchedBattlePower(myPower)
+      if (forcedSide === 'beast') {
+        const matched =
+          pickMatchedPowerBeast(location.realm, matchedPower) ||
+          rollEncounterBeasts(location.realm, 1)[0] ||
+          null
+        if (matched) {
+          const forcedBeast: EncounterBeast = {
+            ...matched,
+            level: estimateBeastLevel(matched),
+            defeated: false,
+            captured: false,
+            killed: false,
+            encounterId: `${matched.id}-${stamp}-forced`,
+            powerOverride: matchedPower,
+            forced: true
+          }
+          encounters.value = [
+            forcedBeast,
+            ...encounters.value.filter((item) => item.id !== matched.id)
+          ].slice(0, 3)
+          forcedBattle = {
+            side: 'beast',
+            encounterId: forcedBeast.encounterId,
+            name: forcedBeast.name,
+            power: matchedPower
+          }
+        }
+      } else {
+        const hostile = pickHostileEncounterNpc(location.realm, playerSectId)
+        if (hostile) {
+          const forcedNpc: EncounterNpc = {
+            ...hostile,
+            interacted: false,
+            encounterId: `${hostile.id}-${stamp}-forced`,
+            powerOverride: matchedPower,
+            forced: true
+          }
+          npcEncounters.value = [
+            forcedNpc,
+            ...npcEncounters.value.filter((item) => item.id !== hostile.id)
+          ].slice(0, 2)
+          forcedBattle = {
+            side: 'hostile',
+            encounterId: forcedNpc.encounterId,
+            name: forcedNpc.name,
+            power: matchedPower
+          }
+        }
+      }
+    }
+
     const base = estimateExploreReward(location)
     const mult = companionRewardMult.value
     const reward = {
@@ -465,10 +549,13 @@ export const useAdventureStore = defineStore('adventure', () => {
     const npcNames = npcEncounters.value.map((item) => item.name).join('、')
     const peopleText = npcNames ? `；偶遇 ${npcNames}` : ''
     const encounterText = encounterEvent.value ? `；触发奇遇「${encounterEvent.value.name}」` : ''
+    const forcedText = forcedBattle
+      ? `；强制交手「${forcedBattle.name}」（战力约 ${forcedBattle.power.toLocaleString()}）`
+      : ''
     const partyText = companionNames.value ? `（同行：${companionNames.value}）` : ''
     pushLog(
-      `在${location.name}探索${partyText}，遭遇 ${beastNames || '空无一人'}${peopleText}${encounterText}${materialText}；修为 +${reward.exp}，灵石 ×${reward.stones}`,
-      materialParts.length || encounterEvent.value ? 'gold' : 'jade'
+      `在${location.name}探索${partyText}，遭遇 ${beastNames || '空无一人'}${peopleText}${encounterText}${forcedText}${materialText}；修为 +${reward.exp}，灵石 ×${reward.stones}`,
+      forcedBattle || materialParts.length || encounterEvent.value ? 'gold' : 'jade'
     )
 
     return {
@@ -476,7 +563,8 @@ export const useAdventureStore = defineStore('adventure', () => {
       beasts: encounters.value,
       npcs: npcEncounters.value,
       encounter: encounterEvent.value,
-      materials: materials as ExploreMaterialLoot
+      materials: materials as ExploreMaterialLoot,
+      forcedBattle
     }
   }
 

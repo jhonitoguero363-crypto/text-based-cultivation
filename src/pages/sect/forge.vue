@@ -74,7 +74,7 @@
           </view>
           <view v-for="item in bagCraftMats" :key="`${item.kind}-${item.name}`" class="mat-row">
             <OreIcon v-if="item.kind === '矿石'" :name="item.name" :level="item.level" size="md" />
-            <view v-else class="mat-fallback">{{ item.name.slice(0, 1) }}</view>
+            <LootMaterialIcon v-else :name="item.name" size="md" />
             <view class="row-item__body">
               <text class="row-item__title">{{ item.name }}</text>
               <text class="row-item__desc">
@@ -199,6 +199,7 @@
 import { computed, reactive, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import OreIcon from '../../components/OreIcon.vue'
+import LootMaterialIcon from '../../components/LootMaterialIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import SegmentTabs from '../../components/SegmentTabs.vue'
 import TreasureIcon from '../../components/TreasureIcon.vue'
@@ -402,7 +403,10 @@ function onForge() {
     return toast(result.reason || '炼器失败')
   }
 
-  treasure.forgeTreasure(result.treasure)
+  treasure.forgeTreasure({
+    ...result.treasure,
+    realm: player.realmState.major
+  })
   player.addBagItem(result.treasure.name, '法宝')
   sect.reportMissionProgress('forge_success', 1)
   player.persist()
@@ -428,7 +432,8 @@ function buy(item: CatalogTreasure) {
     desc: item.effect,
     special: item.special,
     story: item.story,
-    cost: item.price
+    cost: item.price,
+    realm: item.realm
   })
   player.addBagItem(item.name, '法宝')
   player.persist()
@@ -568,40 +573,47 @@ function sell(id: string, name: string) {
   font-weight: 600;
 }
 .shop-item {
-  padding: 12px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
 .shop-item:last-child { border-bottom: none; }
 .shop-item__head {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 .shop-item__special {
   display: block;
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--jade);
-  line-height: 1.4;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .shop-item__story {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 10px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .shop-item__lock {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--hp);
+  line-height: 1.25;
+  word-break: break-word;
 }
 .shop-item__owned {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: var(--text-muted);
+  line-height: 1.25;
 }
 .gold { color: var(--gold); }
 .empty-tip {

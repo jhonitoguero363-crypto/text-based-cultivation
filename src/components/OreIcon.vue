@@ -9,8 +9,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { getOreIconUrl } from '../constants/ore-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadOreIconUrl } from '../constants/ore-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +21,13 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getOreIconUrl(props.name, props.level))
+const src = useAsyncIconSrc(
+  () => `${props.name}::${props.level || ''}`,
+  (key) => {
+    const [name, level] = key.split('::')
+    return loadOreIconUrl(name, level || undefined)
+  }
+)
 </script>
 
 <style lang="scss">

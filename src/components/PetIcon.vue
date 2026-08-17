@@ -9,8 +9,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { getPetIconUrl } from '../constants/pet-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadPetIconUrl } from '../constants/pet-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +21,13 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getPetIconUrl(props.name, props.realm))
+const src = useAsyncIconSrc(
+  () => `${props.name}::${props.realm || ''}`,
+  (key) => {
+    const [name, realm] = key.split('::')
+    return loadPetIconUrl(name, realm || undefined)
+  }
+)
 </script>
 
 <style lang="scss">

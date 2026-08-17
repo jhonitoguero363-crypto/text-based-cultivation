@@ -10,7 +10,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getTechniqueIconUrl } from '../constants/technique-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadTechniqueIconUrl } from '../constants/technique-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +22,7 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getTechniqueIconUrl(props.name))
+const src = useAsyncIconSrc(() => props.name, loadTechniqueIconUrl)
 const fallback = computed(() => props.fallbackChar || props.name.slice(0, 1) || '法')
 </script>
 

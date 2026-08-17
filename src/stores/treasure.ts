@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { TreasureGrade, TreasureSlot } from '../constants/treasure'
 import { getTreasureGradeDef, getTreasureSlot } from '../constants/treasure'
+import { estimateTreasurePowerBonus } from '../constants/combat-power'
+import type { RealmMajor } from '../constants/realm'
 
 export interface Treasure {
   id: string
@@ -104,8 +106,12 @@ export const useTreasureStore = defineStore('treasure', () => {
   }
 
   function addTreasure(item: Treasure) {
-    list.value.push(item)
-    if (!activeId.value) activeId.value = item.id
+    const next = { ...item }
+    if (!(getTreasurePowerBonus(next) > 0)) {
+      next.powerBonus = estimateTreasurePowerBonus(next.grade)
+    }
+    list.value.push(next)
+    if (!activeId.value) activeId.value = next.id
   }
 
   function forgeTreasure(input: {
@@ -117,9 +123,12 @@ export const useTreasureStore = defineStore('treasure', () => {
     desc?: string
     special?: string
     story?: string
+    realm?: RealmMajor
   }) {
     const def = getTreasureGradeDef(input.grade)
-    const bonus = Math.max(2, Math.round(input.cost / 50))
+    const fromCost = Math.max(2, Math.round(input.cost / 50))
+    const fromGrade = estimateTreasurePowerBonus(input.grade, input.realm)
+    const bonus = Math.max(fromCost, fromGrade)
     const item: Treasure = {
       id: `t-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       name: input.name,
@@ -137,6 +146,17 @@ export const useTreasureStore = defineStore('treasure', () => {
     }
     addTreasure(item)
     return item
+  }
+
+  /** 旧存档 / 零加成法宝：按品阶补齐 powerBonus */
+  function migrateMissingPowerBonuses() {
+    let changed = false
+    list.value.forEach((item) => {
+      if (getTreasurePowerBonus(item) > 0) return
+      item.powerBonus = estimateTreasurePowerBonus(item.grade)
+      changed = true
+    })
+    return changed
   }
 
   const equippedPowerBonus = computed(() =>
@@ -161,6 +181,7 @@ export const useTreasureStore = defineStore('treasure', () => {
     resetForge,
     resetOwned,
     addTreasure,
-    forgeTreasure
+    forgeTreasure,
+    migrateMissingPowerBonuses
   }
 })

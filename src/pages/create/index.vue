@@ -2,7 +2,10 @@
   <view class="page page--sub create-page">
     <view class="safe-top" />
     <view class="create-hero">
-      <text class="create-hero__brand">青云修仙</text>
+      <view class="create-hero__logo-wrap">
+        <image class="create-hero__logo" :src="logoUrl" mode="aspectFill" />
+      </view>
+      <text class="create-hero__brand">{{ brandName }}</text>
       <text class="create-hero__title">铸就道基</text>
       <text class="create-hero__desc">写下道号，选定阴阳，叩开仙门</text>
     </view>
@@ -42,7 +45,7 @@
           </view>
         </view>
 
-        <text class="hint">确认后将随机生成金木水火土与风冰雷灵根，以及悟性。冰、风、雷高灵根极为稀有，且默认隐匿，唯当其为最高灵根时方在人物详情中显示。</text>
+        <text class="hint">确认后将随机生成金木水火土与风冰雷灵根，以及悟性。与最高灵根相差不超过 5 可判为双灵根 / 多灵根。冰、风、雷高灵根极为稀有，且默认隐匿，唯当其进入主系判定时方在人物详情中显示。</text>
         <view class="btn btn--gold btn--block" @tap="onConfirm">踏上仙途</view>
       </view>
     </view>
@@ -53,8 +56,11 @@
 import { ref } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import PlayerAvatar from '../../components/PlayerAvatar.vue'
+import { BRAND_LOGO_URL, BRAND_NAME } from '../../constants/brand'
 import { usePlayerStore, type Gender } from '../../stores/player'
 
+const logoUrl = BRAND_LOGO_URL
+const brandName = BRAND_NAME
 const player = usePlayerStore()
 const formName = ref('')
 const gender = ref<Gender>('男')
@@ -102,37 +108,68 @@ function onConfirm() {
 .create-page {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse at top, rgba(217, 179, 108, 0.12), transparent 55%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(217, 179, 108, 0.14), transparent 70%),
     var(--bg);
 }
 
 .create-hero {
-  padding: 36px 24px 16px;
+  padding: 20px 24px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* 圆形裁切：去掉方图黑边，视觉居中剑轴 */
+.create-hero__logo-wrap {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #06080e;
+  box-shadow:
+    0 0 0 1px rgba(217, 179, 108, 0.28),
+    0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+.create-hero__logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* 略放大裁掉四周黑边；右侧重徽章，轻微左移光学对齐 */
+  transform: scale(1.14) translateX(-2px);
+  transform-origin: center center;
 }
 
 .create-hero__brand {
   display: block;
-  font-size: 12px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
   letter-spacing: 0.28em;
   color: var(--gold);
+  line-height: 1.2;
 }
 
 .create-hero__title {
   display: block;
   margin-top: 8px;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.04em;
   color: var(--text-primary);
-  line-height: 1.15;
+  line-height: 1.2;
+  font-family: var(--font-serif);
 }
 
 .create-hero__desc {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
+  margin-bottom: 4px;
   font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .gender-row {

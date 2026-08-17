@@ -1,23 +1,28 @@
+import { buildLazyIconIndex } from '../utils/lazy-icon-index'
 import { TECHNIQUE_ICON_FILES, resolveTechniqueIconName } from './technique-icons'
 
-const modules = import.meta.glob('../assets/techniques/icons/*.png', {
-  eager: true,
-  import: 'default'
-}) as Record<string, string>
+const index = buildLazyIconIndex(
+  import.meta.glob('../assets/techniques/icons/*.png', {
+    import: 'default'
+  }) as Record<string, () => Promise<string>>
+)
 
-const byFile: Record<string, string> = {}
-for (const [path, url] of Object.entries(modules)) {
-  const file = path.split('/').pop() || ''
-  if (file) byFile[file] = url
+function fileOf(name: string) {
+  const key = resolveTechniqueIconName(name)
+  if (!key) return ''
+  return TECHNIQUE_ICON_FILES[key] || ''
 }
 
 export function getTechniqueIconUrl(name: string): string {
-  const key = resolveTechniqueIconName(name)
-  if (!key) return ''
-  const file = TECHNIQUE_ICON_FILES[key]
-  return file ? byFile[file] || '' : ''
+  const file = fileOf(name)
+  return file ? index.getCached(file) : ''
+}
+
+export function loadTechniqueIconUrl(name: string) {
+  const file = fileOf(name)
+  return file ? index.load(file) : Promise.resolve('')
 }
 
 export function hasTechniqueIcon(name: string) {
-  return Boolean(getTechniqueIconUrl(name))
+  return Boolean(fileOf(name))
 }

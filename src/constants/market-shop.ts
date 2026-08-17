@@ -5,11 +5,21 @@ import {
   type LootMaterial
 } from './loot-material-catalog'
 import { getOresByLevel, ORE_MATERIALS } from './ore-catalog'
-import { PILL_SHOP_CATALOG } from './pill-catalog'
+import { PILL_SHOP_CATALOG, getPillByName } from './pill-catalog'
+import {
+  MERCHANT_RARE_PILL_CHANCE,
+  MARKET_RARE_PILL_SHELF_CHANCE,
+  rollMarketRarePill
+} from './pill-market-rare'
 import type { RealmMajor } from './realm'
 import { REALM_MAJORS } from './realm'
 import { getSpellByName } from './spell-catalog'
-import { canLearnTechnique, getTechniqueByName, TECHNIQUE_CATALOG } from './technique-catalog'
+import {
+  canLearnTechnique,
+  getTechniqueByName,
+  isTechniqueMarketEligible,
+  TECHNIQUE_CATALOG
+} from './technique-catalog'
 import { FORGE_SHOP_CATALOG } from './treasure-catalog'
 import { getRealmMajorIndex } from './treasure'
 
@@ -138,7 +148,7 @@ export function estimateBagItemBuyPrice(name: string, category: string) {
     return estimateLootMarketPrice(name)
   }
   if (category === '丹药') {
-    return PILL_SHOP_CATALOG.find((item) => item.name === name)?.price || 80
+    return getPillByName(name)?.price || 80
   }
   if (category === '功法') {
     const tech = TECHNIQUE_CATALOG.find((item) => item.name === name)
@@ -171,7 +181,9 @@ export function rollDailyMarket(playerMajor: RealmMajor): MarketOffer[] {
   }
 
   const techs = pickRandom(
-    TECHNIQUE_CATALOG.filter((item) => canLearnTechnique(playerMajor, item.realm)),
+    TECHNIQUE_CATALOG.filter(
+      (item) => isTechniqueMarketEligible(item) && canLearnTechnique(playerMajor, item.realm)
+    ),
     randInt(3, 6)
   )
   for (const item of techs) {
@@ -247,6 +259,21 @@ export function rollDailyMarket(playerMajor: RealmMajor): MarketOffer[] {
   // 「材料」分类仅回收背包持有，不进货架零售
   offers.push(...herbs, ...ores)
 
+  const rare = rollMarketRarePill(playerMajor, { chance: MARKET_RARE_PILL_SHELF_CHANCE })
+  if (rare) {
+    offers.push({
+      id: `m-rare-${rare.id}-${stamp}`,
+      catalogId: rare.id,
+      category: '丹药',
+      name: rare.name,
+      price: jitterPrice(rare.price),
+      meta: `${rare.realm} · ${rare.type} · 稀有`,
+      effect: rare.effect,
+      tag: rare.grade,
+      tagTone: 'gold'
+    })
+  }
+
   return offers
 }
 
@@ -290,22 +317,32 @@ function buildMerchantOffer(
   stamp: string
 ): MarketOffer | null {
   if (category === '丹药') {
-    const item = pickRandom(poolAtRealmOrBelow(PILL_SHOP_CATALOG, targetRealm), 1)[0]
+    const rare =
+      Math.random() < MERCHANT_RARE_PILL_CHANCE
+        ? rollMarketRarePill(targetRealm, { chance: 1 })
+        : null
+    const item =
+      rare || pickRandom(poolAtRealmOrBelow(PILL_SHOP_CATALOG, targetRealm), 1)[0]
     if (!item) return null
+    const priceMult = item.marketOnly ? 1.25 : 1.15
     return {
       id: `mer-pill-${item.id}-${stamp}`,
       catalogId: item.id,
       category: '丹药',
       name: item.name,
-      price: jitterPrice(Math.round(item.price * 1.15)),
-      meta: `${item.realm} · ${item.type}`,
+      price: jitterPrice(Math.round(item.price * priceMult)),
+      meta: item.marketOnly
+        ? `${item.realm} · ${item.type} · 稀有`
+        : `${item.realm} · ${item.type}`,
       effect: item.effect,
       tag: item.grade,
-      tagTone: 'jade'
+      tagTone: item.marketOnly ? 'gold' : 'jade'
     }
   }
   if (category === '功法') {
-    const pool = TECHNIQUE_CATALOG.filter((item) => canLearnTechnique(targetRealm, item.realm))
+    const pool = TECHNIQUE_CATALOG.filter(
+      (item) => isTechniqueMarketEligible(item) && canLearnTechnique(targetRealm, item.realm)
+    )
     const prefer = pool.filter((item) => item.realm === targetRealm)
     const item = pickRandom(prefer.length ? prefer : pool, 1)[0]
     if (!item) return null

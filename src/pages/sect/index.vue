@@ -1,14 +1,19 @@
 <template>
   <view class="page">
-    <!-- 未入宗：首次进入选择宗门 -->
+    <!-- 未入宗：选择宗门 -->
     <template v-if="!player.hasSect">
       <PageHeader title="择宗入门" subtitle="尚未加入宗门 · 请择一脉而入" />
       <view class="content">
         <view class="panel tip-panel">
-          <text class="tip-panel__text">宗门一经选定不可更改，请谨慎抉择。</text>
+          <text class="tip-panel__text">
+            退出后不可再入同一宗门。若转投敌对派系（正道、魔门、妖族互为敌对），历练遇势均力敌之敌将必触发交手。
+          </text>
+          <text v-if="blockedNames" class="tip-panel__text tip-panel__text--warn">
+            已诀别、不可再入：{{ blockedNames }}
+          </text>
         </view>
         <view
-          v-for="item in sectOptions"
+          v-for="item in joinableOptions"
           :key="item.id"
           class="panel sect-option"
           @tap="onChoose(item)"
@@ -27,6 +32,9 @@
           </view>
           <text class="sect-option__desc">{{ item.desc }}</text>
           <text class="sect-option__base">{{ item.base }}</text>
+        </view>
+        <view v-if="!joinableOptions.length" class="panel tip-panel">
+          <text class="tip-panel__text tip-panel__text--warn">已无可加入宗门。</text>
         </view>
       </view>
     </template>
@@ -51,6 +59,12 @@
           <text class="hero__intro">{{ sect.desc }}</text>
           <text class="hero__stipend">{{ stipendHint }}</text>
           <text class="hero__theme">界面风格 · {{ themeLabel }}</text>
+          <text v-if="player.hasHostileBetrayal()" class="hero__warn">
+            叛出后入敌对派系 · 历练势均力敌交手必触发
+          </text>
+          <view class="hero__leave">
+            <view class="btn btn--ghost" @tap="onLeaveSect">退出宗门</view>
+          </view>
         </view>
 
         <view class="panel">
@@ -84,7 +98,7 @@ import AppTabBar from '../../components/AppTabBar.vue'
 import FacilityIcon from '../../components/FacilityIcon.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import StoneChip from '../../components/StoneChip.vue'
-import { SECT_OPTIONS, getSectTierRank, type SectOption } from '../../constants/sects'
+import { SECT_OPTIONS, getSectOption, getSectTierRank, type SectOption } from '../../constants/sects'
 import { formatSectStipendHint } from '../../constants/sect-stipend'
 import { resolveJoinRankFromRoots } from '../../constants/roots'
 import { sectIdToUiTheme, UI_THEME_LABEL } from '../../constants/ui-theme'
@@ -93,7 +107,15 @@ import { useSectStore } from '../../stores/sect'
 
 const player = usePlayerStore()
 const sect = useSectStore()
-const sectOptions = SECT_OPTIONS
+const joinableOptions = computed(() =>
+  SECT_OPTIONS.filter((item) => player.canJoinSect(item.id))
+)
+const blockedNames = computed(() =>
+  player.leftSectIds
+    .map((id) => getSectOption(id)?.name)
+    .filter(Boolean)
+    .join('、')
+)
 const stipendHint = computed(() => formatSectStipendHint(player.rank))
 const themeLabel = computed(() => UI_THEME_LABEL[sectIdToUiTheme(player.sectId)])
 
@@ -127,19 +149,52 @@ function facilityTone(key: string) {
   return FACILITY_TONE[key] || 'gold'
 }
 
+function onLeaveSect() {
+  Taro.showModal({
+    title: '退出宗门',
+    content:
+      '退出后不可再入本宗，与本宗人物亲密度大幅降低，贡献清零。若转投敌对派系，历练遇势均力敌必触发交手。确定退出？',
+    confirmText: '退出',
+    confirmColor: '#c45c5c',
+    success: (res) => {
+      if (!res.confirm) return
+      const result = player.leaveSect()
+      if (!result.ok) {
+        Taro.showToast({ title: '当前未在宗门', icon: 'none' })
+        return
+      }
+      Taro.showToast({
+        title: `已退出${result.leftName}，不可再入`,
+        icon: 'none',
+        duration: 2400
+      })
+    }
+  })
+}
+
 function onChoose(item: SectOption) {
+  if (!player.canJoinSect(item.id)) {
+    Taro.showToast({ title: '不可再入此宗', icon: 'none' })
+    return
+  }
   const previewRank = resolveJoinRankFromRoots(
     player.roots,
     getSectTierRank(item.tier)
   )
+  const hostileHint = player.leftSectIds.length
+    ? '\n（若与已诀别宗门敌对，历练交手将加重）'
+    : ''
   Taro.showModal({
     title: `加入${item.name}`,
-    content: `${item.tier} · ${item.faction} · ${item.tag}\n${item.desc}\n依你主灵根「${player.rootBone}」与宗门等级，确认后将以「${previewRank}」身份入门。`,
+    content: `${item.tier} · ${item.faction} · ${item.tag}\n${item.desc}\n依你主灵根「${player.rootBone}」与宗门等级，确认后将以「${previewRank}」身份入门。${hostileHint}`,
     success: (res) => {
       if (!res.confirm) return
       const result = player.joinSect(item.id, item.name)
-      if (!result) {
-        Taro.showToast({ title: '你已加入宗门', icon: 'none' })
+      if (!result.ok) {
+        Taro.showToast({
+          title: result.reason === 'left_blocked' ? '不可再入此宗' : '你已加入宗门',
+          icon: 'none'
+        })
         return
       }
       const gift =
@@ -153,7 +208,6 @@ function onChoose(item: SectOption) {
         icon: 'none',
         duration: 2800
       })
-      // 入宗时已弹月俸，清空待提示避免再弹一次
       player.ensureMonthlyStipend()
     }
   })
@@ -169,6 +223,29 @@ function onChoose(item: SectOption) {
   font-size: 12px;
   color: var(--gold);
   line-height: 1.5;
+}
+
+.tip-panel__text + .tip-panel__text {
+  display: block;
+  margin-top: 6px;
+}
+
+.tip-panel__text--warn {
+  color: var(--hp);
+}
+
+.hero__warn {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--hp);
+  line-height: 1.4;
+}
+
+.hero__leave {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .sect-option {

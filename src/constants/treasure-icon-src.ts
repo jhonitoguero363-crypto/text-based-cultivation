@@ -1,27 +1,18 @@
 import type { TreasureCategory } from './treasure'
+import { buildLazyIconIndex } from '../utils/lazy-icon-index'
 import { TREASURE_ICON_FILES, resolveTreasureIconName } from './treasure-icons'
 
-const modules = import.meta.glob('../assets/treasures/icons/*.png', {
-  eager: true,
-  import: 'default'
-}) as Record<string, string>
+const icons = buildLazyIconIndex(
+  import.meta.glob('../assets/treasures/icons/*.png', {
+    import: 'default'
+  }) as Record<string, () => Promise<string>>
+)
 
-const fallbackModules = import.meta.glob('../assets/treasures/fallback/*.png', {
-  eager: true,
-  import: 'default'
-}) as Record<string, string>
-
-const byFile: Record<string, string> = {}
-for (const [path, url] of Object.entries(modules)) {
-  const file = path.split('/').pop() || ''
-  if (file) byFile[file] = url
-}
-
-const fallbackByFile: Record<string, string> = {}
-for (const [path, url] of Object.entries(fallbackModules)) {
-  const file = path.split('/').pop() || ''
-  if (file) fallbackByFile[file] = url
-}
+const fallbacks = buildLazyIconIndex(
+  import.meta.glob('../assets/treasures/fallback/*.png', {
+    import: 'default'
+  }) as Record<string, () => Promise<string>>
+)
 
 /** 无专属图标时，按法宝类别使用默认图 */
 export const TREASURE_TYPE_FALLBACK_FILES: Record<TreasureCategory, string> = {
@@ -41,20 +32,37 @@ export function normalizeTreasureType(type?: string): TreasureCategory {
 
 export function getTreasureTypeFallbackUrl(type?: string): string {
   const file = TREASURE_TYPE_FALLBACK_FILES[normalizeTreasureType(type)]
-  return fallbackByFile[file] || ''
+  return fallbacks.getCached(file)
 }
 
-/** 图鉴切片打包后的 URL；无专属图时按类别回退默认图 */
+export function loadTreasureTypeFallbackUrl(type?: string) {
+  const file = TREASURE_TYPE_FALLBACK_FILES[normalizeTreasureType(type)]
+  return fallbacks.load(file)
+}
+
 export function getTreasureIconUrl(name: string, grade?: string, type?: string): string {
   const key = resolveTreasureIconName(name, grade)
   if (key) {
     const file = TREASURE_ICON_FILES[key]
-    const url = file ? byFile[file] || '' : ''
+    const url = file ? icons.getCached(file) : ''
     if (url) return url
   }
   return getTreasureTypeFallbackUrl(type)
 }
 
-export function hasTreasureIcon(name: string, grade?: string, type?: string) {
-  return Boolean(getTreasureIconUrl(name, grade, type))
+export async function loadTreasureIconUrl(name: string, grade?: string, type?: string) {
+  const key = resolveTreasureIconName(name, grade)
+  if (key) {
+    const file = TREASURE_ICON_FILES[key]
+    if (file) {
+      const url = await icons.load(file)
+      if (url) return url
+    }
+  }
+  return loadTreasureTypeFallbackUrl(type)
+}
+
+export function hasTreasureIcon(name: string, grade?: string) {
+  const key = resolveTreasureIconName(name, grade)
+  return Boolean(key && TREASURE_ICON_FILES[key])
 }

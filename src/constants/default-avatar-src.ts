@@ -1,9 +1,11 @@
 import maleUrl from '../assets/player/default-male.png'
 import femaleUrl from '../assets/player/default-female.png'
-import { QINGYUN_EXTRA_FEMALE_NAMES } from './member-catalog-qingyun-extra'
-import { TIANMO_FEMALE_NAMES } from './member-catalog-tianmo'
-import { WANJIAN_FEMALE_NAMES } from './member-catalog-wanjian'
-import { YAOZU_FEMALE_NAMES } from './member-catalog-yaozu'
+import {
+  QINGYUN_EXTRA_FEMALE_NAMES,
+  TIANMO_FEMALE_NAMES,
+  WANJIAN_FEMALE_NAMES,
+  YAOZU_FEMALE_NAMES
+} from './member-female-names'
 
 /** 已知女性角色（无专属头像时用女默认像） */
 const FEMALE_NAMES = new Set([
@@ -37,7 +39,7 @@ const FEMALE_NAMES = new Set([
   '灵宠少女',
   '妖族使者',
   '上古残魂',
-  '天外来客',
+  '天外来客'
 ])
 
 const FEMALE_HINT =

@@ -115,9 +115,11 @@ if (otherRarity.length) {
 md += `\n`
 
 md += `## 关联\n\n`
+md += `- 对战掉落总览：[历练对战掉落](./历练对战掉落.md)\n`
 md += `- 秘境地点：[秘境设定](./秘境设定.md)\n`
 md += `- 妖兽名录：[图鉴-灵兽](./图鉴-灵兽.md)\n`
 md += `- 玩法说明：[玩法系统](./玩法系统.md)\n`
+md += `- 材料图鉴：[图鉴-材料](./图鉴-材料.md)\n`
 
 fs.writeFileSync('docs/历练妖兽掉落.md', md, 'utf8')
 console.log('beasts', list.length)

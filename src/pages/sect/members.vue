@@ -173,9 +173,9 @@ function visit(id: string) {
 }
 .member-row {
   display: flex;
-  align-items: stretch;
-  gap: 10px;
-  padding: 8px 0;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
 .member-row:last-child {
@@ -199,15 +199,16 @@ function visit(id: string) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 2px;
+  gap: 1px;
 }
 .member-row__name {
   display: block;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .member-row__tags {
   display: flex;
@@ -225,13 +226,15 @@ function visit(id: string) {
   display: block;
   font-size: 10px;
   color: var(--text-muted);
-  line-height: 1.2;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 .member-row__intimacy {
   display: block;
   font-size: 10px;
   color: var(--jade);
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .member-row__btn {
   align-self: center;

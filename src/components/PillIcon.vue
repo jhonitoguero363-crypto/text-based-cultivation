@@ -9,8 +9,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { getPillIconUrl } from '../constants/pill-icon-src'
+import { useAsyncIconSrc } from '../composables/useAsyncIconSrc'
+import { loadPillIconUrl } from '../constants/pill-icon-src'
 
 const props = withDefaults(
   defineProps<{
@@ -20,7 +20,7 @@ const props = withDefaults(
   { size: 'md' }
 )
 
-const src = computed(() => getPillIconUrl(props.name))
+const src = useAsyncIconSrc(() => props.name, loadPillIconUrl)
 </script>
 
 <style lang="scss">

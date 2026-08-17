@@ -235,26 +235,44 @@ const practicingSpellObj = computed(() => {
   return ownedSpells.value.find((item) => item.name === practiceTarget.value?.name) || null
 })
 
-const techSpeed = computed(() =>
-  calcTechniquePracticeSpeed({
-    comprehension: player.comprehension,
+const techSpeed = computed(() => {
+  const base = calcTechniquePracticeSpeed({
+    comprehension: player.effectiveComprehension,
     roots: player.roots,
-    techniqueType: activeTech.value?.type,
+    techniqueType: activeTech.value?.attr || activeTech.value?.type,
     techniqueSchool: activeTech.value?.school,
     cultivateBonus: sect.cultivateBonus,
     gatherSpeed: sect.gatherSpeed
   })
-)
+  const comprehensionBuff = player.getPillBuffMult('comprehension')
+  const cultivateBuff = player.getPillBuffMult('cultivate')
+  return {
+    ...base,
+    comprehension: base.comprehension * comprehensionBuff,
+    total: base.total * comprehensionBuff * cultivateBuff,
+    pillComprehension: comprehensionBuff,
+    pillCultivate: cultivateBuff
+  }
+})
 
-const spellSpeed = computed(() =>
-  calcSpellPracticeSpeed({
-    comprehension: player.comprehension,
+const spellSpeed = computed(() => {
+  const base = calcSpellPracticeSpeed({
+    comprehension: player.effectiveComprehension,
     roots: player.roots,
     spellAttr: practicingSpellObj.value?.attr || '',
     cultivateBonus: sect.cultivateBonus,
     gatherSpeed: sect.gatherSpeed
   })
-)
+  const comprehensionBuff = player.getPillBuffMult('comprehension')
+  const cultivateBuff = player.getPillBuffMult('cultivate')
+  return {
+    ...base,
+    comprehension: base.comprehension * comprehensionBuff,
+    total: base.total * comprehensionBuff * cultivateBuff,
+    pillComprehension: comprehensionBuff,
+    pillCultivate: cultivateBuff
+  }
+})
 
 const currentSpeed = computed(() =>
   practicingSpell.value ? spellSpeed.value : techSpeed.value
@@ -277,6 +295,12 @@ const speedHint = computed(() => {
     parts.push(`相克${s.rootName} ${formatSpeedMult(s.root)}`)
   } else if (s.rootName) {
     parts.push(`${formatRelationLabel(s.relation)}${s.rootName} ${formatSpeedMult(s.root)}`)
+  }
+  if (s.pillComprehension && s.pillComprehension > 1) {
+    parts.push(`悟性丹 ${formatSpeedMult(s.pillComprehension)}`)
+  }
+  if (s.pillCultivate && s.pillCultivate > 1) {
+    parts.push(`聚灵丹 ${formatSpeedMult(s.pillCultivate)}`)
   }
   return `${parts.join(' · ')} · 合计 ${formatSpeedMult(s.total)}`
 })
@@ -321,7 +345,7 @@ const breakthroughRateText = computed(() => {
       : ''
   const pillPart = preview.pillName
     ? preview.hasPill
-      ? ` · 将服${preview.pillName}(+${preview.pillBonus}%)`
+      ? ` · 可选${preview.pillName}(+${preview.pillBonus}%)`
       : ` · 未备${preview.pillName}`
     : ''
   return `成功率 ${preview.rate}%${rootPart}${pillPart}`
@@ -366,10 +390,10 @@ function rollPracticeGain(speedMult: number) {
 
 function practiceTick() {
   if (!practiceTarget.value) return
-  const speed =
+  const baseSpeed =
     practiceTarget.value.kind === 'spell'
       ? calcSpellPracticeSpeed({
-          comprehension: player.comprehension,
+          comprehension: player.effectiveComprehension,
           roots: player.roots,
           spellAttr:
             ownedSpells.value.find((item) => item.name === practiceTarget.value?.name)?.attr || '',
@@ -377,13 +401,16 @@ function practiceTick() {
           gatherSpeed: sect.gatherSpeed
         })
       : calcTechniquePracticeSpeed({
-          comprehension: player.comprehension,
+          comprehension: player.effectiveComprehension,
           roots: player.roots,
-          techniqueType: activeTech.value?.type,
+          techniqueType: activeTech.value?.attr || activeTech.value?.type,
           techniqueSchool: activeTech.value?.school,
           cultivateBonus: sect.cultivateBonus,
           gatherSpeed: sect.gatherSpeed
         })
+  const pillMult =
+    player.getPillBuffMult('comprehension') * player.getPillBuffMult('cultivate')
+  const speed = { ...baseSpeed, total: baseSpeed.total * pillMult }
 
   if (practiceTarget.value.kind === 'dual') {
     if (player.exp < player.expMax) {
@@ -576,21 +603,40 @@ async function onBreakthrough() {
     toast('修为未满，暂不可突破')
     return
   }
-  const preview = player.getBreakthroughPreview()
-  if (!preview) return
-  const pillLine = preview.pillName
-    ? preview.hasPill
-      ? `\n将服用${preview.pillName}（成败均消耗）`
-      : `\n未备${preview.pillName}，成功率较低`
-    : ''
-  const res = await Taro.showModal({
-    title: preview.isMajor ? '大境界突破' : '小境界突破',
-    content: `${preview.fromLabel} → ${preview.toLabel}\n成功率 ${preview.rate}%${pillLine}\n失败则修为降至八成`,
-    confirmText: '确认突破'
-  })
-  if (!res.confirm) return
+  const basePreview = player.getBreakthroughPreview(false)
+  if (!basePreview) return
+
+  let usePill = false
+  if (basePreview.pillName && basePreview.hasPill) {
+    const withPill = player.getBreakthroughPreview(true)
+    const pillRes = await Taro.showModal({
+      title: basePreview.isMajor ? '大境界突破' : '小境界突破',
+      content: `${basePreview.fromLabel} → ${basePreview.toLabel}\n不服药成功率 ${basePreview.rate}%\n服用${basePreview.pillName}成功率 ${withPill?.rate ?? basePreview.rate}%（成败均消耗）\n失败则修为降至八成`,
+      confirmText: '服药突破',
+      cancelText: '不服药'
+    })
+    // confirm=服药突破；cancel（含「不服药」）=不服药突破
+    if (pillRes.confirm) {
+      usePill = true
+    } else if (pillRes.cancel) {
+      usePill = false
+    } else {
+      return
+    }
+  } else {
+    const pillLine = basePreview.pillName
+      ? `\n未备${basePreview.pillName}，成功率较低`
+      : ''
+    const res = await Taro.showModal({
+      title: basePreview.isMajor ? '大境界突破' : '小境界突破',
+      content: `${basePreview.fromLabel} → ${basePreview.toLabel}\n成功率 ${basePreview.rate}%${pillLine}\n失败则修为降至八成`,
+      confirmText: '确认突破'
+    })
+    if (!res.confirm) return
+  }
+
   const beforeRealm = player.realm
-  const result = player.breakthrough()
+  const result = player.breakthrough(usePill)
   if (!result) {
     toast('突破未生效，请重试')
     return

@@ -1,3 +1,5 @@
+import { localizeMissionText } from './mission-localize'
+
 export type MissionTag = '每日' | '悬赏' | '周常' | '随机' | '奇遇'
 
 export type MissionTagTone = 'jade' | 'hp' | 'gold' | 'mp' | 'muted'
@@ -12,13 +14,18 @@ export type MissionObjectiveKind =
   | 'escort_deliver'
   | 'pill_deliver'
   | 'technique_copy'
-  | 'defeat_mo_xiu'
+  | 'defeat_hostile'
   | 'rescue_talk'
   | 'kill_beast'
   | 'spar'
   | 'capture_turn_in'
   | 'tower_guard'
+  | 'demon_slay'
+  | 'sword_ask'
+  | 'ancestor_trial'
   | 'market_talk'
+  | 'find_mole'
+  | 'recruit_disciples'
 
 export interface MissionObjective {
   kind: MissionObjectiveKind
@@ -86,7 +93,7 @@ export const MISSION_CATALOG: CatalogMission[] = [
     name: '挖掘灵矿',
     tag: '每日',
     tagTone: 'jade',
-    desc: '前往青云矿洞挖掘灵矿 ×5',
+    desc: '前往宗门矿洞挖掘灵矿 ×5',
     reward: '贡献 +30 · 灵石 ×50',
     action: '完成',
     objective: obj('mine_dig', 20, '矿洞挖矿次数 ≥20')
@@ -106,7 +113,7 @@ export const MISSION_CATALOG: CatalogMission[] = [
     name: '饲养灵兽',
     tag: '每日',
     tagTone: 'jade',
-    desc: '前往灵兽峰喂养灵宠 ×3',
+    desc: '前往灵兽阁喂养灵宠 ×3',
     reward: '贡献 +25 · 灵宠经验 +100',
     action: '完成',
     objective: obj('feed_pet', 15, '灵兽阁喂养次数 ≥15（每 5 秒可喂一次）')
@@ -143,13 +150,13 @@ export const MISSION_CATALOG: CatalogMission[] = [
   },
   {
     id: 'ms-7',
-    name: '清剿魔修',
+    name: '清剿敌对势力',
     tag: '悬赏',
     tagTone: 'hp',
-    desc: '前往黑风林击杀魔修 ×3',
+    desc: '前往秘境击杀敌对势力修士 ×3',
     reward: '贡献 +150 · 灵石 ×150',
     action: '领取',
-    objective: obj('defeat_mo_xiu', 3, '秘境击败「魔道修士」≥3', '黑风林')
+    objective: obj('defeat_hostile', 3, '秘境击败敌对势力人物 ≥3', '黑风林')
   },
   {
     id: 'ms-8',
@@ -193,7 +200,7 @@ export const MISSION_CATALOG: CatalogMission[] = [
   },
   {
     id: 'ms-14',
-    name: '丹峰送药',
+    name: '丹阁送药',
     tag: '每日',
     tagTone: 'jade',
     desc: '随机拜访一名弟子领取丹药，再送往另一名弟子',
@@ -222,15 +229,68 @@ export const MISSION_CATALOG: CatalogMission[] = [
     objective: obj('market_talk', 1, '坊市拜访指定散修并交谈')
   },
   {
+    id: 'ms-18',
+    name: '找出卧底',
+    tag: '悬赏',
+    tagTone: 'hp',
+    desc: '宗门内似有卧底潜伏，找出并与其交谈拆穿',
+    reward: '贡献 +80 · 灵石 ×100',
+    action: '领取',
+    objective: obj('find_mole', 1, '接取后指定一名弟子为卧底，拜访并交谈')
+  },
+  {
+    id: 'ms-19',
+    name: '招收弟子',
+    tag: '每日',
+    tagTone: 'jade',
+    desc: '前往坊市招收散修入宗 ×3',
+    reward: '贡献 +40 · 灵石 ×60',
+    action: '前往',
+    objective: obj('recruit_disciples', 1, '坊市点「招收弟子」招入 3 名新弟子')
+  },
+  {
     id: 'ms-24',
     name: '试炼妖塔',
     tag: '周常',
     tagTone: 'mp',
-    desc: '挑战宗门妖塔并达到指定层数',
+    desc: '前往镇妖塔完成任意一层镇守',
     reward: '贡献 +100 · 修为 +10',
     action: '前往',
-    objective: obj('tower_guard', 60, '镇妖塔镇守指定层数持续 60 秒'),
+    objective: obj('tower_guard', 1, '镇妖塔完成任意一层镇守'),
     requiresFacility: 'tower'
+  },
+  {
+    id: 'ms-25',
+    name: '魔窟试炼',
+    tag: '周常',
+    tagTone: 'hp',
+    desc: '进入魔窟斩杀魔影一次',
+    reward: '贡献 +100 · 修为 +10',
+    action: '前往',
+    objective: obj('demon_slay', 1, '魔窟杀伐获胜 1 次'),
+    requiresFacility: 'demon_den'
+  },
+  {
+    id: 'ms-40',
+    name: '剑冢问剑',
+    tag: '周常',
+    tagTone: 'gold',
+    desc: '于剑冢静坐悟剑一次',
+    reward: '贡献 +100 · 修为 +10',
+    action: '前往',
+    objective: obj('sword_ask', 1, '剑冢问剑成功 1 次'),
+    requiresFacility: 'sword_tomb'
+  },
+  {
+    id: 'ms-41',
+    name: '返祖试炼',
+    tag: '周常',
+    tagTone: 'jade',
+    desc: '踏入返祖池试炼血脉一次',
+    reward: '贡献 +100 · 修为 +10',
+    action: '前往',
+    objective: obj('ancestor_trial', 1, '返祖池尝试 1 次（成败皆可）'),
+    requiresFacility: 'ancestor_pool'
   },
   // —— 奇遇（不进任务堂）——
   {
@@ -466,10 +526,21 @@ export function resolveEscortMembers(
   return { pickupId, deliverId, pickupName, deliverName, phase }
 }
 
+export function resolveMoleMember(
+  mission: DailyMission | null | undefined,
+  members: Array<{ id: string; name: string }> = []
+) {
+  const id = String(mission?.meta?.moleMemberId || '')
+  const name =
+    members.find((m) => m.id === id)?.name || String(mission?.meta?.moleMemberName || '')
+  return { id, name }
+}
+
 /** 任务条件文案：护送类接取后显示具体领取人 / 送达人 */
 export function formatMissionConditionText(
   mission: DailyMission | null | undefined,
-  members: Array<{ id: string; name: string }> = []
+  members: Array<{ id: string; name: string }> = [],
+  sectId?: string | null
 ) {
   if (!mission?.objective) return ''
   if (isEscortMissionKind(mission.objective.kind) && mission.accepted) {
@@ -481,7 +552,30 @@ export function formatMissionConditionText(
       return `${route}（请先拜访 ${pickupName} 领取）`
     }
   }
-  return mission.objective.hint
+  if (mission.objective.kind === 'find_mole' && mission.accepted) {
+    const { name } = resolveMoleMember(mission, members)
+    if (name) {
+      if ((mission.progress || 0) >= mission.objective.target) {
+        return `卧底 · ${name}（已交谈，可回角色页完成）`
+      }
+      return `卧底 · ${name}（拜访并交谈）`
+    }
+  }
+  return localizeMissionText(mission.objective.hint, sectId)
+}
+
+/** 找出卧底：质问时随机生成的对白 */
+export const MOLE_TALK_LINES = [
+  '你压低声音：「近期宗门机密外泄，你可知情？」对方眼神一闪，终是承认自己另有所属。',
+  '几句试探后，对方袖中玉简微亮——你已确认其卧底身份，对方苦笑求饶。',
+  '对方起初矢口否认，被你点破行踪破绽后，只得承认受他宗所托潜入。',
+  '你佯装闲聊，对方言辞闪烁；再追问一句，其气息已乱，卧底之事不攻自破。',
+  '对方面露惊慌：「……你既已识破，便动手罢。」任务至此已明。'
+]
+
+export function rollMoleTalkLine(name: string) {
+  const line = MOLE_TALK_LINES[Math.floor(Math.random() * MOLE_TALK_LINES.length)] || MOLE_TALK_LINES[0]
+  return `【${name}】\n${line}`
 }
 
 /** 历练探索时随机抽取一条奇遇；未触发返回 null */

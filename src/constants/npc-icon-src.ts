@@ -1,23 +1,28 @@
+import { buildLazyIconIndex } from '../utils/lazy-icon-index'
 import { NPC_ICON_FILES, resolveNpcIconName } from './npc-icons'
 
-const modules = import.meta.glob('../assets/npcs/icons/*.png', {
-  eager: true,
-  import: 'default'
-}) as Record<string, string>
+const index = buildLazyIconIndex(
+  import.meta.glob('../assets/npcs/icons/*.png', {
+    import: 'default'
+  }) as Record<string, () => Promise<string>>
+)
 
-const byFile: Record<string, string> = {}
-for (const [path, url] of Object.entries(modules)) {
-  const file = path.split('/').pop() || ''
-  if (file) byFile[file] = url
+function fileOf(name: string) {
+  const key = resolveNpcIconName(name)
+  if (!key) return ''
+  return NPC_ICON_FILES[key] || ''
 }
 
 export function getNpcIconUrl(name: string): string {
-  const key = resolveNpcIconName(name)
-  if (!key) return ''
-  const file = NPC_ICON_FILES[key]
-  return file ? byFile[file] || '' : ''
+  const file = fileOf(name)
+  return file ? index.getCached(file) : ''
+}
+
+export function loadNpcIconUrl(name: string) {
+  const file = fileOf(name)
+  return file ? index.load(file) : Promise.resolve('')
 }
 
 export function hasNpcIcon(name: string) {
-  return Boolean(getNpcIconUrl(name))
+  return Boolean(fileOf(name))
 }

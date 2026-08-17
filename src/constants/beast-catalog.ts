@@ -767,6 +767,7 @@ export function beastToPetFields(beast: CatalogBeast) {
     grade: beast.rarity,
     type: `${beast.race} · ${beast.element}`,
     bonus: beast.ability,
+    realm: beast.realm,
     source: 'capture' as const
   }
 }
@@ -838,6 +839,36 @@ export function rollEncounterBeasts(locationRealm: RealmMajor, count = 1): Catal
     result.push(picked)
   }
   return shuffleUnique(result)
+}
+
+/**
+ * 依地点境界池挑选战力最接近目标值的妖兽（用于强制交手势均力敌）。
+ */
+export function pickMatchedPowerBeast(
+  locationRealm: RealmMajor,
+  targetPower: number
+): CatalogBeast | null {
+  const idx = getRealmMajorIndex(locationRealm)
+  const pool: CatalogBeast[] = [...getBeastsByRealm(locationRealm)]
+  if (idx > 0) pool.push(...getBeastsByRealm(REALM_MAJORS[idx - 1]))
+  if (idx < REALM_MAJORS.length - 1) {
+    const higher = REALM_MAJORS[idx + 1]
+    if (higher && higher !== '无修为') pool.push(...getBeastsByRealm(higher))
+  }
+  if (!pool.length) return null
+
+  const target = Math.max(100, targetPower)
+  let best = pool[0]
+  let bestGap = Number.POSITIVE_INFINITY
+  for (const beast of pool) {
+    const power = estimateBeastPower(beast)
+    const gap = Math.abs(power - target)
+    if (gap < bestGap) {
+      best = beast
+      bestGap = gap
+    }
+  }
+  return best
 }
 
 /** 估算妖兽等级（展示用） */

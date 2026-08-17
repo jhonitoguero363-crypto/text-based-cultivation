@@ -4,12 +4,12 @@ import Taro from '@tarojs/taro'
 
 import './app.scss'
 import { restoreUiTheme } from './constants/ui-theme'
-import { usePlayerStore } from './stores/player'
 
 const CLIFF_ROUTE = 'pages/sect/cliff'
 
-function ensureCliffLock() {
+async function ensureCliffLock() {
   try {
+    const { usePlayerStore } = await import('./stores/player')
     const player = usePlayerStore()
     player.clearCliffIfExpired()
     if (!player.onCliff) return
@@ -31,7 +31,7 @@ const App = createApp({
     } catch {
       restoreUiTheme(null)
     }
-    ensureCliffLock()
+    void ensureCliffLock()
   }
 })
 

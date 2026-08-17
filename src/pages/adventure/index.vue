@@ -32,7 +32,7 @@
           <view class="btn btn--ghost" @tap="removeCompanion(mate.id)">移除</view>
         </view>
         <view v-if="adventure.companions.length" class="companion-bar">
-          <text class="muted">合计战力 {{ adventure.companionPower.toLocaleString() }}</text>
+          <text class="muted">合计战力 {{ adventure.companionPower.toLocaleString() }}（名录×0.3）</text>
           <text class="jade" @tap="goMembers">再邀 ›</text>
           <text class="muted" @tap="clearCompanions">清空</text>
         </view>
@@ -65,17 +65,20 @@
           <text class="section-title__sub">共 {{ locationList.length }} 处</text>
         </view>
         <view v-if="!locationList.length" class="empty-tip">该境界暂无历练地点</view>
-        <view v-for="item in locationList" :key="item.id" class="shop-item">
+        <view v-for="item in locationList" :key="item.id" class="loc-row shop-item">
           <view class="shop-item__head">
-            <view class="icon-box">🗺️</view>
+            <LocationIcon :name="item.name" size="lg" />
             <view class="row-item__body">
               <view class="inline-row">
                 <text class="row-item__title">{{ item.name }}</text>
                 <text class="tag tag--jade">{{ item.danger }}</text>
               </view>
-              <text class="row-item__desc">建议境界 · {{ item.realm }}</text>
-              <text class="row-item__desc gold">产出 · {{ item.drops }}</text>
-              <text class="row-item__desc muted">特色 · {{ item.feature }}</text>
+              <text class="row-item__desc">建议 · {{ item.realm }} · 产出 · {{ item.drops }}</text>
+              <text class="row-item__desc muted">{{ item.feature }}</text>
+              <text v-if="!canEnter(item)" class="row-item__desc hp">境界未及 · 需达{{ item.realm }}</text>
+              <text v-else class="row-item__desc muted">
+                预计修为 +{{ estimate(item).exp }} · 灵石 ×{{ estimate(item).stones }}
+              </text>
             </view>
             <view
               class="btn"
@@ -85,10 +88,6 @@
               进入
             </view>
           </view>
-          <text v-if="!canEnter(item)" class="shop-item__lock">境界未及 · 需达{{ item.realm }}</text>
-          <text v-else class="shop-item__owned">
-            预计修为 +{{ estimate(item).exp }} · 灵石 ×{{ estimate(item).stones }}
-          </text>
         </view>
       </view>
     </view>
@@ -98,6 +97,13 @@
         <view class="section-title">
           <text class="section-title__main">坊市人物</text>
           <text class="section-title__sub">今日 {{ adventure.marketNpcs.length }} 人 · 商人/正道/魔道/散修</text>
+        </view>
+        <view v-if="canRecruitDisciples" class="recruit-bar">
+          <view class="recruit-bar__body">
+            <text class="recruit-bar__title">招收弟子</text>
+            <text class="recruit-bar__desc">于坊市招入 3 名散修 · 姓名与根骨随机</text>
+          </view>
+          <view class="btn btn--gold btn--sm" @tap="recruitDisciples">招收</view>
         </view>
         <view v-if="!adventure.marketNpcs.length" class="empty-tip">今日暂无坊市人物</view>
         <view v-for="npc in adventure.marketNpcs" :key="npc.id" class="market-npc">
@@ -153,6 +159,11 @@
             <view class="shop-card__art">
               <HerbIcon v-if="item.materialKind === 'herb'" :name="item.name" size="lg" />
               <OreIcon v-else-if="item.materialKind === 'ore'" :name="item.name" size="lg" />
+              <LootMaterialIcon
+                v-else-if="item.materialKind === 'loot' || item.category === '材料'"
+                :name="item.name"
+                size="lg"
+              />
               <PillIcon v-else-if="item.category === '丹药'" :name="item.name" size="lg" />
               <TechniqueIcon v-else-if="item.category === '功法'" :name="item.name" size="lg" />
               <TreasureIcon
@@ -197,7 +208,8 @@
               <HerbIcon v-if="row.category === '药材'" :name="row.name" size="lg" />
               <OreIcon v-else-if="row.category === '矿石'" :name="row.name" size="lg" />
               <PillIcon v-else-if="row.category === '丹药'" :name="row.name" size="lg" />
-              <view class="shop-card__fallback shop-card__fallback--loot">
+              <LootMaterialIcon v-else-if="row.category === '材料'" :name="row.name" size="lg" />
+              <view v-else class="shop-card__fallback shop-card__fallback--loot">
                 {{ row.name.slice(0, 1) }}
               </view>
             </view>
@@ -228,6 +240,8 @@ import { computed, ref } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import AppTabBar from '../../components/AppTabBar.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
+import LocationIcon from '../../components/LocationIcon.vue'
+import LootMaterialIcon from '../../components/LootMaterialIcon.vue'
 import OreIcon from '../../components/OreIcon.vue'
 import PillIcon from '../../components/PillIcon.vue'
 import PortraitAvatar from '../../components/PortraitAvatar.vue'
@@ -246,6 +260,7 @@ import {
 import type { AdventureNpc } from '../../constants/adventure-npc-catalog'
 import { formatUntilNextGameDay } from '../../constants/game-time'
 import { formatIntimacy } from '../../constants/intimacy'
+import { isMissionObjectiveMet } from '../../constants/mission-catalog'
 import {
   calcMarketRecyclePrice,
   canMarketRecycleBagItem,
@@ -275,6 +290,12 @@ const realmTabs = ['全部', ...ADVENTURE_LOCATION_REALMS] as const
 
 const locationList = computed(() => filterLocationsByRealm(locationRealm.value))
 const marketList = computed(() => adventure.marketList)
+
+const canRecruitDisciples = computed(() => {
+  const mission = sect.activeMission
+  if (!sect.joined || !mission || mission.objective?.kind !== 'recruit_disciples') return false
+  return !isMissionObjectiveMet(mission)
+})
 
 const bagRecycleList = computed(() =>
   player.bag
@@ -360,6 +381,20 @@ function onTab(value: string) {
 
 function toast(title: string) {
   Taro.showToast({ title, icon: 'none' })
+}
+
+function recruitDisciples() {
+  if (!canRecruitDisciples.value) return toast('当前无需招收')
+  const created = sect.recruitMarketDisciples(3)
+  if (!created?.length) return toast('招收失败')
+  const names = created.map((item) => item.name).join('、')
+  const roots = created.map((item) => item.rootBone || '未知').join(' / ')
+  Taro.showModal({
+    title: '招收成功',
+    content: `新弟子：${names}\n根骨：${roots}\n可回角色页完成任务`,
+    showCancel: false,
+    confirmText: '已知晓'
+  })
 }
 
 function goMembers() {
@@ -483,6 +518,31 @@ function recycleBagItem(row: {
   gap: 8px;
   padding: 8px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.35);
+}
+.recruit-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--panel-2);
+  border-radius: 10px;
+}
+.recruit-bar__body {
+  flex: 1;
+  min-width: 0;
+}
+.recruit-bar__title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+.recruit-bar__desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 .market-npc:last-child {
   border-bottom: none;
@@ -658,12 +718,12 @@ function recycleBagItem(row: {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 3px;
+  gap: 1px;
 }
 
 .shop-card__title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -672,13 +732,12 @@ function recycleBagItem(row: {
 .shop-card__name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
   color: var(--text-primary);
+  word-break: break-word;
+  white-space: normal;
 }
 
 .shop-card__title .tag {
@@ -690,11 +749,10 @@ function recycleBagItem(row: {
 .shop-card__meta,
 .shop-card__effect {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .shop-card__meta {
@@ -791,7 +849,7 @@ function recycleBagItem(row: {
 }
 
 .shop-item {
-  padding: 12px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(46, 59, 89, 0.45);
 }
 .shop-item:last-child {
@@ -800,7 +858,41 @@ function recycleBagItem(row: {
 .shop-item__head {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
+}
+
+/* 秘境地点列表：紧凑 + 按需换行 */
+.loc-row.shop-item {
+  padding: 6px 0;
+}
+.loc-row .shop-item__head {
+  gap: 8px;
+  align-items: flex-start;
+}
+.loc-row .row-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.loc-row .row-item__title,
+.loc-row .row-item__desc {
+  display: block;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
+}
+.loc-row .row-item__desc {
+  margin-top: 0;
+}
+.loc-row .row-item__desc.hp {
+  color: var(--hp);
+}
+.loc-row .inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
 }
 .empty-tip {
   padding: 12px 4px;
