@@ -403,6 +403,7 @@ function goMembers() {
 }
 
 function visitMarketNpc(npc: AdventureNpc) {
+  sect.setVisitTarget('')
   adventure.setVisitNpc(npc)
   Taro.navigateTo({ url: '/pages/sect/visit' })
 }

@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-cliff">
     <PageHeader
       title="思过崖"
       :subtitle="serving ? '面壁中 · 刑期未满不可离开' : '宗门 · 面壁受罚'"
@@ -127,6 +127,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss">
+.page-cliff {
 .content {
   padding: 0 16px 20px;
 }
@@ -187,5 +188,6 @@ onBeforeUnmount(() => {
   margin-top: 10px;
   font-size: 11px;
   color: var(--text-muted);
+}
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-cave">
     <PageHeader title="洞府" :subtitle="`${sect.name || '宗门'}静修之所`" show-back />
     <view class="content">
       <view v-if="player.injured" class="panel injury-panel">
@@ -670,6 +670,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss">
+.page-cave {
 .content { padding: 0 16px 20px; }
 .injury-panel {
   border-color: rgba(224, 92, 106, 0.4);
@@ -852,5 +853,6 @@ onBeforeUnmount(() => {
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-muted);
+}
 }
 </style>

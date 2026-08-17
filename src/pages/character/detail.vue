@@ -308,7 +308,6 @@ function goTech() {
 <style lang="scss">
 .detail-page {
   padding: 2px 16px 20px;
-}
 
 .hero__main {
   display: flex;
@@ -359,6 +358,7 @@ function goTech() {
   color: var(--jade);
   border-color: rgba(91, 200, 168, 0.35);
   background: rgba(91, 200, 168, 0.1);
+}
 }
 
 .stat-bar {

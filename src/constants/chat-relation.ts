@@ -85,6 +85,11 @@ export function setChatRelation(memberId: string, effects: Partial<ChatRelationE
   return next
 }
 
+/** 清空全部交谈意愿（身死 / 创角） */
+export function clearAllChatRelations() {
+  saveMap({})
+}
+
 export function stanceLabel(stance: ChatStance) {
   if (stance === 'refuse') return '拒绝'
   if (stance === 'reluctant') return '勉强'

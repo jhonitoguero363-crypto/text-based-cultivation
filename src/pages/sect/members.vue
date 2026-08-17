@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-members">
     <PageHeader title="人物" :subtitle="`${sect.name} · 弟子名录`" show-back />
     <view class="content">
       <view class="panel">
@@ -148,6 +148,7 @@ function visit(id: string) {
 </script>
 
 <style lang="scss">
+.page-members {
 .content { padding: 0 16px 20px; }
 .realm-filter {
   display: flex;
@@ -245,5 +246,6 @@ function visit(id: string) {
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
 }
 </style>

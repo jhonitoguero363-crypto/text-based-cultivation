@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-pill">
     <PageHeader title="丹阁" subtitle="宗门 · 丹药买卖与炼制" show-back />
     <SegmentTabs :model-value="mode" :items="['丹药买卖', '炼制丹药']" @update:model-value="mode = $event" />
 
@@ -315,6 +315,7 @@ function sell(name: string) {
 </script>
 
 <style lang="scss">
+.page-pill {
 .content { padding: 0 16px 20px; }
 .inline { display: flex; align-items: center; gap: 6px; }
 .mode-filter {
@@ -424,5 +425,6 @@ function sell(name: string) {
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
 }
 </style>

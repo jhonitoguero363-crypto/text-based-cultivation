@@ -446,19 +446,30 @@ export function isMissionAvailableForFacilities(
   return new Set(facilityKeys).has(mission.requiresFacility)
 }
 
-function sectMissionPool(facilityKeys?: Iterable<string> | null) {
-  return SECT_MISSION_CATALOG.filter((item) =>
-    isMissionAvailableForFacilities(item, facilityKeys)
+function sectMissionPool(
+  facilityKeys?: Iterable<string> | null,
+  memberPoolSize?: number | null
+) {
+  return SECT_MISSION_CATALOG.filter(
+    (item) =>
+      isMissionAvailableForFacilities(item, facilityKeys) &&
+      isMissionAvailableForMemberPool(item, memberPoolSize)
   )
 }
 
 /** 从宗门任务库随机抽取（不含奇遇） */
 export function rollDailyMissions(
   count = DAILY_MISSION_COUNT,
-  facilityKeys?: Iterable<string> | null
+  facilityKeys?: Iterable<string> | null,
+  memberPoolSize?: number | null
 ): DailyMission[] {
-  const pool = sectMissionPool(facilityKeys)
-  const source = pool.length ? pool : SECT_MISSION_CATALOG.filter((item) => !item.requiresFacility)
+  const pool = sectMissionPool(facilityKeys, memberPoolSize)
+  const source = pool.length
+    ? pool
+    : SECT_MISSION_CATALOG.filter(
+        (item) =>
+          !item.requiresFacility && isMissionAvailableForMemberPool(item, memberPoolSize)
+      )
   const picked = shuffle(source).slice(0, Math.min(count, source.length))
   const stamp = Date.now()
   return picked.map((item, index) => withMissionDefaults(item, `${item.id}-${stamp}-${index}`))
@@ -467,14 +478,18 @@ export function rollDailyMissions(
 /** 补一条新的可领取任务（可排除当前板上已有模板 id） */
 export function rollOneMission(
   excludeCatalogIds: string[] = [],
-  facilityKeys?: Iterable<string> | null
+  facilityKeys?: Iterable<string> | null,
+  memberPoolSize?: number | null
 ): DailyMission {
   const exclude = new Set(excludeCatalogIds)
-  const available = sectMissionPool(facilityKeys)
+  const available = sectMissionPool(facilityKeys, memberPoolSize)
   const pool = available.filter((item) => !exclude.has(item.id))
   const fallback = available.length
     ? available
-    : SECT_MISSION_CATALOG.filter((item) => !item.requiresFacility)
+    : SECT_MISSION_CATALOG.filter(
+        (item) =>
+          !item.requiresFacility && isMissionAvailableForMemberPool(item, memberPoolSize)
+      )
   const source = pool.length ? pool : fallback
   const item = source[Math.floor(Math.random() * source.length)]
   return withMissionDefaults(item, `${item.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`)
@@ -508,6 +523,23 @@ export function formatMissionProgress(mission: DailyMission | null | undefined) 
 
 export function isEscortMissionKind(kind?: string | null) {
   return kind === 'escort_deliver' || kind === 'pill_deliver'
+}
+
+/** 护送 / 卧底需要至少 2 名非自身弟子 */
+export const MISSION_MEMBER_POOL_MIN = 2
+
+export function missionRequiresMemberPool(kind?: string | null) {
+  return kind === 'find_mole' || isEscortMissionKind(kind)
+}
+
+/** 弟子池是否够刷出/接取护送与卧底；memberPoolSize 为 null 时不做门禁 */
+export function isMissionAvailableForMemberPool(
+  mission: { objective?: { kind?: string } | null } | null | undefined,
+  memberPoolSize: number | null | undefined
+) {
+  if (memberPoolSize == null) return true
+  if (!missionRequiresMemberPool(mission?.objective?.kind)) return true
+  return memberPoolSize >= MISSION_MEMBER_POOL_MIN
 }
 
 export function resolveEscortMembers(

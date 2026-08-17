@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-sect">
     <!-- 未入宗：选择宗门 -->
     <template v-if="!player.hasSect">
       <PageHeader title="择宗入门" subtitle="尚未加入宗门 · 请择一脉而入" />
@@ -215,6 +215,7 @@ function onChoose(item: SectOption) {
 </script>
 
 <style lang="scss">
+.page-sect {
 .tip-panel {
   padding: 12px 14px;
 }
@@ -415,4 +416,5 @@ function onChoose(item: SectOption) {
 .tone-jade { color: var(--jade); }
 .tone-mp { color: var(--mp); }
 .tone-hp { color: var(--hp); }
+}
 </style>

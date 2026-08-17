@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-mission">
     <PageHeader title="任务堂" :subtitle="headerSub" show-back />
     <view class="content">
       <view v-if="sect.activeMission" class="panel active-panel">
@@ -64,6 +64,8 @@ import {
 } from '../../constants/game-time'
 import {
   formatMissionConditionText,
+  MISSION_MEMBER_POOL_MIN,
+  missionRequiresMemberPool,
   resolveEscortMembers,
   resolveMoleMember,
   type DailyMission
@@ -127,6 +129,13 @@ function onAction(item: DailyMission) {
   if (item.accepted) return goCharacter()
   if (sect.hasActiveMission) return toast('请先完成或取消当前任务')
 
+  if (missionRequiresMemberPool(item.objective?.kind)) {
+    const pool = sect.members.filter((m) => !m.self).length
+    if (pool < MISSION_MEMBER_POOL_MIN) {
+      return toast(`同门弟子不足 ${MISSION_MEMBER_POOL_MIN} 人，暂不可接`)
+    }
+  }
+
   const accepted = sect.acceptMission(item.instanceId)
   if (!accepted) return toast('领取失败')
   const route = resolveEscortMembers(accepted, sect.members)
@@ -142,6 +151,7 @@ function onAction(item: DailyMission) {
 </script>
 
 <style lang="scss">
+.page-mission {
 .content { padding: 0 16px 20px; }
 .jade { color: var(--jade); }
 .gold { color: var(--gold); }
@@ -193,5 +203,6 @@ function onAction(item: DailyMission) {
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
 }
 </style>

@@ -105,6 +105,8 @@ import {
   resolveSectStipendGroup
 } from '../constants/sect-stipend'
 import { applyUiTheme, applyUiThemeForSect } from '../constants/ui-theme'
+import { clearAllChatRelations } from '../constants/chat-relation'
+import { clearAllVisitChatHistory } from '../services/visit-chat'
 import { resolveSpiritBeastRealm } from '../constants/pet-catalog'
 import { useSectStore } from './sect'
 import { useTreasureStore } from './treasure'
@@ -1691,6 +1693,16 @@ export const usePlayerStore = defineStore('player', () => {
     useTreasureStore().resetOwned()
     useSectStore().resetOwnedTechniques()
     useSectStore().clearJoinedSect()
+    useSectStore().clearAllRecruited()
+    clearAllVisitChatHistory()
+    clearAllChatRelations()
+    void import('./adventure').then((mod) => {
+      try {
+        mod.useAdventureStore().clearCompanions()
+      } catch {
+        // ignore
+      }
+    })
     applyUiTheme('modao')
     persist()
   }
@@ -1739,6 +1751,16 @@ export const usePlayerStore = defineStore('player', () => {
     useTreasureStore().resetOwned()
     useSectStore().resetOwnedTechniques()
     useSectStore().clearJoinedSect()
+    useSectStore().clearAllRecruited()
+    clearAllVisitChatHistory()
+    clearAllChatRelations()
+    void import('./adventure').then((mod) => {
+      try {
+        mod.useAdventureStore().clearCompanions()
+      } catch {
+        // ignore
+      }
+    })
     try {
       Taro.removeStorageSync(STORAGE_KEY)
     } catch {

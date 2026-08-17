@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-mine">
     <PageHeader title="矿洞" subtitle="宗门 · 挖矿取石" show-back />
     <view class="content">
       <view class="panel">
@@ -208,6 +208,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss">
+.page-mine {
 .content { padding: 0 16px 20px; }
 .hint {
   display: block;
@@ -270,5 +271,6 @@ onBeforeUnmount(() => {
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
 }
 </style>

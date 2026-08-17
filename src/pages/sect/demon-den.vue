@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-demon-den">
     <PageHeader title="魔窟" subtitle="天魔宗 · 杀伐试炼" show-back />
     <view class="content">
       <view class="panel">
@@ -138,6 +138,7 @@ function onSlay() {
 </script>
 
 <style lang="scss">
+.page-demon-den {
 .content {
   padding: 0 16px 20px;
 }
@@ -168,5 +169,6 @@ function onSlay() {
 }
 .fight-btn {
   margin-top: 4px;
+}
 }
 </style>

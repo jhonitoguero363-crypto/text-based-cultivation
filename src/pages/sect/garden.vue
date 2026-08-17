@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-garden">
     <PageHeader title="药园" subtitle="宗门 · 灵石兑换药材" show-back />
     <view class="content">
       <view v-if="showIrrigate" class="panel">
@@ -128,6 +128,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss">
+.page-garden {
 .content { padding: 0 16px 20px; }
 .inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .irrigate-hint {
@@ -167,4 +168,5 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 .muted { color: var(--text-muted); }
+}
 </style>

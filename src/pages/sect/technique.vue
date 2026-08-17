@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-technique">
     <PageHeader title="功法阁" subtitle="宗门 · 功法与法术" show-back />
     <SegmentTabs :model-value="mode" :items="modes" @update:model-value="onMode" />
 
@@ -521,6 +521,7 @@ function loreText(text: string) {
 </script>
 
 <style lang="scss">
+.page-technique {
 .content {
   padding: 0 16px 20px;
 }
@@ -964,5 +965,6 @@ function loreText(text: string) {
 .tech-sheet__close {
   margin-top: 12px;
   width: 100%;
+}
 }
 </style>

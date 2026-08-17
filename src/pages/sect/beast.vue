@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-beast">
     <PageHeader title="灵兽阁" subtitle="宗门 · 只售灵宠 · 回收灵兽" show-back />
     <SegmentTabs
       :model-value="mode"
@@ -243,6 +243,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss">
+.page-beast {
 .content { padding: 0 16px 20px; }
 .inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .hint-top {
@@ -302,5 +303,6 @@ onBeforeUnmount(() => {
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
 }
 </style>

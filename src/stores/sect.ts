@@ -7,7 +7,9 @@ import {
   DAILY_MISSION_COUNT,
   hydrateMissionFromCatalog,
   isMissionAvailableForFacilities,
+  isMissionAvailableForMemberPool,
   isMissionObjectiveMet,
+  missionRequiresMemberPool,
   rollOneMission,
   type DailyMission,
   type MissionObjectiveKind
@@ -404,13 +406,19 @@ export const useSectStore = defineStore('sect', () => {
   function refillMissionBoard() {
     // 宗门尚未写入（存档 hydrate 早于 applyJoinedSect）时不做设施门禁，避免误删存档任务
     const keys = sectId.value ? facilityKeys.value : null
+    const memberPoolSize = sectId.value
+      ? members.value.filter((m) => !m.self).length
+      : null
     missions.value = missions.value.filter((item) => {
       if (item.done) return false
-      return isMissionAvailableForFacilities(item, keys)
+      if (!isMissionAvailableForFacilities(item, keys)) return false
+      // 未接取的护送/卧底：弟子不足 2 人则下板
+      if (!item.accepted && !isMissionAvailableForMemberPool(item, memberPoolSize)) return false
+      return true
     })
     const excludeIds = missions.value.map((item) => item.id)
     while (missions.value.length < DAILY_MISSION_COUNT) {
-      const next = rollOneMission(excludeIds, keys)
+      const next = rollOneMission(excludeIds, keys, memberPoolSize)
       excludeIds.push(next.id)
       missions.value.push(next)
     }
@@ -456,13 +464,12 @@ export const useSectStore = defineStore('sect', () => {
   function assignEscortMembers(item: DailyMission) {
     const pool = members.value.filter((m) => !m.self)
     if (pool.length < 2) {
-      const only = pool[0]
       item.meta = {
         ...(item.meta || {}),
-        pickupMemberId: only?.id || '',
-        deliverMemberId: only?.id || '',
-        pickupMemberName: only?.name || '',
-        deliverMemberName: only?.name || '',
+        pickupMemberId: '',
+        deliverMemberId: '',
+        pickupMemberName: '',
+        deliverMemberName: '',
         escortPhase: 'none'
       }
       return
@@ -501,10 +508,12 @@ export const useSectStore = defineStore('sect', () => {
     if (hasActiveMission.value) return null
     const item = missions.value.find((mission) => mission.instanceId === instanceId)
     if (!item || item.done || item.accepted) return null
+    const kind = item.objective?.kind
+    const memberPoolSize = members.value.filter((m) => !m.self).length
+    if (missionRequiresMemberPool(kind) && memberPoolSize < 2) return null
     item.accepted = true
     item.progress = 0
     item.meta = {}
-    const kind = item.objective?.kind
     if (kind === 'escort_deliver' || kind === 'pill_deliver') {
       assignEscortMembers(item)
     }
@@ -779,6 +788,12 @@ export const useSectStore = defineStore('sect', () => {
     persistMissions()
   }
 
+  /** 清空招收弟子存档（身死 / 创角） */
+  function clearAllRecruited() {
+    recruitedBySect.value = {}
+    persistRecruited()
+  }
+
   function applyJoinedSect(idOrName: string) {
     const option = getSectOption(idOrName)
     if (!option) return
@@ -867,6 +882,7 @@ export const useSectStore = defineStore('sect', () => {
     recruitMarketDisciples,
     resetOwnedTechniques,
     clearJoinedSect,
+    clearAllRecruited,
     applyJoinedSect
   }
 })

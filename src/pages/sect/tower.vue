@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-tower">
     <PageHeader title="镇妖塔" subtitle="青云宗 · 镇守试炼" show-back />
     <view class="content">
       <view class="panel">
@@ -184,6 +184,7 @@ onBeforeUnmount(() => clearGuard())
 </script>
 
 <style lang="scss">
+.page-tower {
 .content {
   padding: 0 16px 20px;
 }
@@ -203,5 +204,6 @@ onBeforeUnmount(() => clearGuard())
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
 }
 </style>

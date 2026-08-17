@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-forge">
     <PageHeader title="器阁" subtitle="宗门 · 法宝买卖与打造" show-back />
     <SegmentTabs :model-value="mode" :items="['法宝买卖', '打造法宝']" @update:model-value="mode = $event" />
 
@@ -455,6 +455,7 @@ function sell(id: string, name: string) {
 </script>
 
 <style lang="scss">
+.page-forge {
 .content { padding: 0 16px 20px; }
 .mode-filter {
   display: flex;
@@ -621,5 +622,6 @@ function sell(id: string, name: string) {
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
+}
 }
 </style>

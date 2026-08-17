@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-visit">
     <PageHeader title="拜访" :subtitle="`${member?.name || ''} · ${member?.title || ''}`" show-back />
     <view class="content" v-if="member">
       <view class="panel">
@@ -204,7 +204,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useUnload } from '@tarojs/taro'
 import PageHeader from '../../components/PageHeader.vue'
 import HerbIcon from '../../components/HerbIcon.vue'
 import LootMaterialIcon from '../../components/LootMaterialIcon.vue'
@@ -262,7 +262,8 @@ import { usePlayerStore } from '../../stores/player'
 import { useSectStore, type Member } from '../../stores/sect'
 import { useTreasureStore } from '../../stores/treasure'
 
-type VisitMember = Member & {
+type VisitMember = Omit<Member, 'sectId'> & {
+  sectId: Member['sectId'] | ''
   source?: 'sect' | 'market'
   kind?: string
 }
@@ -317,7 +318,8 @@ function mapMarketNpc(npc: AdventureNpc): VisitMember {
     specialty: npc.event,
     note: `常出没于${npc.place}`,
     attitude: '中立',
-    sectId: (sect.sectId || 'qingyun') as Member['sectId'],
+    // 坊市人物无本宗 id，否则会与玩家同 sectId 导致敌对亲密判定失效
+    sectId: '',
     self: false,
     source: 'market',
     kind: npc.kind
@@ -432,7 +434,7 @@ async function sendChat(preset?: string) {
         hostileFaction: !!intimacySeedOpts(target)?.hostile
       },
       player: {
-        id: 'self',
+        id: player.name ? `p:${player.name}` : 'anon',
         name: player.name || '散修',
         realm: player.realm,
         rank: player.rank || '散修',
@@ -478,6 +480,10 @@ useDidShow(() => {
     player.persist()
   }
   reloadChatLines()
+})
+
+useUnload(() => {
+  adventure.setVisitNpc(null)
 })
 
 const isMerchant = computed(
@@ -649,6 +655,7 @@ function handleDeathDuelDefeat(
       confirmText: '重新开始',
       showCancel: false,
       success: () => {
+        adventure.clearCompanions()
         player.wipeOnDeath()
         Taro.reLaunch({ url: '/pages/create/index' })
       }
@@ -1019,6 +1026,7 @@ function handleMoleTalk() {
 </script>
 
 <style lang="scss">
+.page-visit {
 .content { padding: 0 16px 20px; }
 .hero { display: flex; gap: 12px; align-items: center; }
 .hero__body { flex: 1; }
@@ -1284,5 +1292,6 @@ function handleMoleTalk() {
   font-size: 12px;
   font-weight: 700;
   color: var(--gold);
+}
 }
 </style>

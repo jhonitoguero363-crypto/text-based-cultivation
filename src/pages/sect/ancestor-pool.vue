@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-ancestor-pool">
     <PageHeader title="返祖池" subtitle="妖族 · 血脉试炼" show-back />
     <view class="content">
       <view class="panel">
@@ -163,6 +163,7 @@ function onEnter() {
 </script>
 
 <style lang="scss">
+.page-ancestor-pool {
 .content {
   padding: 0 16px 20px;
 }
@@ -197,5 +198,6 @@ function onEnter() {
   font-size: 11px;
   color: var(--text-secondary);
   line-height: 1.45;
+}
 }
 </style>

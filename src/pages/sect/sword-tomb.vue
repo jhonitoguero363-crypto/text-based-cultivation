@@ -1,5 +1,5 @@
 <template>
-  <view class="page page--sub">
+  <view class="page page--sub page-sword-tomb">
     <PageHeader title="剑冢" subtitle="万剑宗 · 问剑悟道" show-back />
     <view class="content">
       <view class="panel">
@@ -150,6 +150,7 @@ onBeforeUnmount(() => clearTimer())
 </script>
 
 <style lang="scss">
+.page-sword-tomb {
 .content {
   padding: 0 16px 20px;
 }
@@ -183,5 +184,6 @@ onBeforeUnmount(() => clearTimer())
   font-size: 11px;
   color: var(--text-secondary);
   line-height: 1.45;
+}
 }
 </style>

@@ -86,6 +86,11 @@ export function clearVisitChatHistory(memberId: string) {
   saveHistoryMap(map)
 }
 
+/** 清空全部拜访对白缓存（身死 / 创角） */
+export function clearAllVisitChatHistory() {
+  saveHistoryMap({})
+}
+
 function appendHistory(memberId: string, userText: string, assistantText: string) {
   if (!memberId) return
   const map = loadHistoryMap()
@@ -147,7 +152,10 @@ export async function requestVisitChat(input: {
       }
     })
 
-    const data = (res.data || {}) as Partial<VisitChatResult>
+      const data = (res.data || {}) as Partial<VisitChatResult>
+    const status = Number((res as { statusCode?: number }).statusCode || 0)
+    if (status === 401) return fail('unauthorized', '灵机受阻，网关未授权')
+    if (status >= 400) return fail(`http_${status}`)
     const reply = String(data.reply || '').trim()
     if (!reply) return fail('empty')
 
